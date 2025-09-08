@@ -14,7 +14,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API_TOKEN = '8227342510:AAFpVIGrnvkwq5nwQGhaYLXUrPf-gi_2heM'
 API_TOKEN = os.getenv('TOKEN')
 
 main_menu_image = os.getenv('MAIN_IMAGE')
@@ -423,4 +422,5 @@ async def main():
     await dp.start_polling(bot)
 
 asyncio.run(main())
+
 
