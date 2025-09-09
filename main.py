@@ -304,10 +304,10 @@ async def schedule(callback: types.CallbackQuery):
 async def schedule(callback: types.CallbackQuery):
     async with aiosqlite.connect("server.db") as db:
         async with db.cursor() as cursor:
-            student_code = (await cursor.execute(
+            student_code = (await (await cursor.execute(
                 "SELECT student_code FROM users WHERE id = (?)",
                 (callback.from_user.id, )
-            )).fetchone()[0]
+            )).fetchone())[0]
     group = str(student_code)[:-2]
     if callback.data.split()[1] == 'week':
         week, day = get_week_and_day()
