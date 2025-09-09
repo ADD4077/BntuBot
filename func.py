@@ -6,6 +6,9 @@ from aiogram.utils.keyboard import InlineKeyboardMarkup
 
 from typing import Union
 
+import bs4
+import requests
+
 
 def get_week_and_day(today: Union[None, datetime] = None) -> (int, str):
     """
@@ -67,3 +70,46 @@ async def auth_send(bot, message):
         f'Привет, @{message.from_user.username}!, чтобы использовать бота, нужно авторизоваться c помощью студенческого билета. Для этого нажмите кнопку "Авторизация".',
         reply_markup=markup
     )
+
+
+def authorize(login: str, password: str) -> Union[bool, tuple[str, str]]:
+    """
+    Checks if user is student or not
+    If student return fullname and faculty
+    Otherwise return False
+    """
+    session = requests.Session()
+    response = session.get("https://bntu.by/user/login", verify=False)
+    cookies = response.cookies
+    soup = bs4.BeautifulSoup(response.content, "html.parser")
+    token = soup.form.find("input", attrs={"name": "_token"})["value"]
+
+    headers = {
+        "cookie": f"XSRF-TOKEN={cookies['XSRF-TOKEN']};\
+                    laravel_session={cookies['laravel_session']}"
+    }
+
+    data = {
+        "_token": token,
+        "username": login,
+        "password": password
+    }
+
+    response = session.post(
+        "https://bntu.by/user/auth",
+        headers=headers, data=data, verify=False
+    )
+    soup = bs4.BeautifulSoup(response.content, "html.parser")
+    if "pay" in response.url:
+        fullname = soup.find(
+            "h1",
+            class_="newsName"
+        ).next_sibling.next_sibling.text.split(",")[1][1:-22]
+        info_div = soup.find("div", class_="dashboardInfo")
+        for line in info_div.contents:
+            if "курс" in line:
+                _, _, faculty, _ = line.split(",")
+                break
+        faculty = faculty.replace(" ", "")
+        return fullname, faculty
+    return False
