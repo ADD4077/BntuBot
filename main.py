@@ -5,19 +5,20 @@ import aiosqlite
 import json
 
 from aiogram.fsm.context import FSMContext
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher, types, flags
 from aiogram.filters.command import Command
 from aiogram import F
 from aiogram.utils.keyboard import InlineKeyboardMarkup
-from functools import wraps
 
 # star imports are bad due to overshadowing and currently
 # removed using this
-from func import auth_send, \
-                 get_week_and_day, \
+from func import get_week_and_day, \
                  get_tomorrow_week_and_day, \
                  Form, \
                  AcceptAuthForm
+
+from middleware import AuthorizationMiddleware
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -43,28 +44,8 @@ with open("passes.json", "r", encoding="utf8") as jsonfile:
     passes = json.load(jsonfile)
 
 
-async def is_authorized(func):
-    @wraps(func)
-    async def wrapper(*args):
-        user = args[0].from_user
-        async with aiosqlite.connect("server.db") as db:
-            async with db.cursor() as cursor:
-                if cursor.execute(
-                    "SELECT id FROM users WHERE id = (?)",
-                    (user.id, )
-                ).fetchone():
-                    func()
-                else:
-                    await bot.send_message(
-                        id_admin,
-                        f"Новый пользователь @{user.username} ({user.full_name})."
-                    )
-                    auth_send(bot, args[0])
-    return wrapper
-
-
-@is_authorized()
 @dp.message(Command("start"))
+@flags.authorization(is_authorized=True)
 async def start(message: types.Message):
     b_schedule = types.InlineKeyboardButton(
         text="📅 Расписание",
@@ -103,8 +84,9 @@ async def start(message: types.Message):
         )
 
 
-@is_authorized()
+
 @dp.callback_query(F.data == "main_menu")
+@flags.authorization(is_authorized=True)
 async def main_menu(callback: types.CallbackQuery):
     b_schedule = types.InlineKeyboardButton(
         text="📅 Расписание",
@@ -165,8 +147,7 @@ async def auth_begin(callback: types.CallbackQuery, state: FSMContext):
 @dp.message(Form.photo)
 async def auth_end(message: types.Message, state: FSMContext):
     if not message.photo:
-        await message.answer("Пожалуйста, отправьте именно фото.")
-        return
+        return await message.answer("Пожалуйста, отправьте именно фото.")
     b_auth = types.InlineKeyboardButton(
         text="Авторизовать",
         callback_data=f"accept_auth {message.from_user.id}"
@@ -214,7 +195,7 @@ async def accept_auth_2(message: types.Message, state: FSMContext):
             await cursor.execute(
                 "INSERT INTO users VALUES (?, ?, ?, ?, ?)",
                 (id, fio, fac, student_code, bilet_code)
-            ).fetchone()[0]
+            )
         await db.commit()
     await message.answer("Пользователь был успешно авторизован.")
     await bot.send_message(
@@ -222,8 +203,8 @@ async def accept_auth_2(message: types.Message, state: FSMContext):
     )
 
 
-@is_authorized()
 @dp.callback_query(F.data == "map")
+@flags.authorization(is_authorized=True)
 async def main_menu(callback: types.CallbackQuery):
     back = types.InlineKeyboardButton(
         text="Убрать",
@@ -238,8 +219,8 @@ async def main_menu(callback: types.CallbackQuery):
     await callback.answer()
 
 
-@is_authorized()
 @dp.callback_query(F.data == "passes")
+@flags.authorization(is_authorized=True)
 async def passes_button(callback: types.CallbackQuery):
     rows = []
     for i in list(passes):
@@ -260,8 +241,8 @@ async def passes_button(callback: types.CallbackQuery):
     )
 
 
-@is_authorized()
 @dp.callback_query(F.data.split()[0] == "get_passes")
+@flags.authorization(is_authorized=True)
 async def pass_button(callback: types.CallbackQuery):
     text = f"{callback.data.split()[1]} | "+passes[callback.data.split()[1]]
     back = types.InlineKeyboardButton(
@@ -275,8 +256,8 @@ async def pass_button(callback: types.CallbackQuery):
     )
 
 
-@is_authorized()
 @dp.callback_query(F.data == "schedule")
+@flags.authorization(is_authorized=True)
 async def schedule(callback: types.CallbackQuery):
     b_together = types.InlineKeyboardButton(
         text="Сегодня",
@@ -318,15 +299,15 @@ async def schedule(callback: types.CallbackQuery):
         )
 
 
-@is_authorized()
 @dp.callback_query(F.data.split()[0] == "send_schedule")
+@flags.authorization(is_authorized=True)
 async def schedule(callback: types.CallbackQuery):
     async with aiosqlite.connect("server.db") as db:
         async with db.cursor() as cursor:
-            student_code = await cursor.execute(
+            student_code = (await cursor.execute(
                 "SELECT student_code FROM users WHERE id = (?)",
                 (callback.from_user.id, )
-            ).fetchone()[0]
+            )).fetchone()[0]
     group = str(student_code)[:-2]
     if callback.data.split()[1] == 'week':
         week, day = get_week_and_day()
@@ -349,7 +330,7 @@ async def schedule(callback: types.CallbackQuery):
         )
     elif callback.data.split()[1] == 'next_week':
         week, day = get_week_and_day()
-        reversing_list = [None, 2, 1]
+        reversing_list = [1, 0]
         week = reversing_list[week]
         back = types.InlineKeyboardButton(
             text="⬅️ Назад",
@@ -415,8 +396,8 @@ async def delete(callback: types.CallbackQuery):
     await callback.message.delete()
 
 
-@is_authorized()
 @dp.callback_query(F.data.split()[0] == "help")
+@flags.authorization(is_authorized=True)
 async def help(callback: types.CallbackQuery):
     back = types.InlineKeyboardButton(
         text="⬅️ Назад",
@@ -445,6 +426,7 @@ async def main():
         await db.commit()
     me = await bot.get_me()
     print(f'@{me.username} ({me.first_name})')
+    dp.message.middleware(AuthorizationMiddleware())
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
