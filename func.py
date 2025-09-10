@@ -8,9 +8,11 @@ from typing import Union
 
 import bs4
 import requests
+import hashlib
 
+requests.packages.urllib3.disable_warnings()
 
-def get_week_and_day(today: Union[None, datetime] = None) -> (int, str):
+async def get_week_and_day(today: Union[None, datetime] = None) -> tuple[int, str]:
     """
     Returns number of week and name of the day as tuple
     If today variable isnt provided uses datetime.now().date()
@@ -40,7 +42,7 @@ def get_week_and_day(today: Union[None, datetime] = None) -> (int, str):
 
 # Better way to do this will be to add tomorrow argument to get_week_and_day
 # Subject to discuss
-def get_tomorrow_week_and_day(today=None):
+async def get_tomorrow_week_and_day(today=None):
     if today is None:
         today = datetime.now().date()
     else:
@@ -58,13 +60,20 @@ class AcceptAuthForm(StatesGroup):
     id = State()
     text = State()
 
+class AutoAuth(StatesGroup):
+    student_code = State()
+    code = State()
 
 async def auth_send(bot, message):
     b_auth = types.InlineKeyboardButton(
         text="Авторизоваться",
-        callback_data="auth"
+        callback_data="auto_auth"
     )
-    markup = InlineKeyboardMarkup(inline_keyboard=[[b_auth]])
+    b_privacy = types.InlineKeyboardButton(
+        text="Политика конфиденциальности",
+        url=f"https://telegra.ph/Politika-konfidencialnosti-09-08-51"
+    )
+    markup = InlineKeyboardMarkup(inline_keyboard=[[b_auth], [b_privacy]])
     await bot.send_message(
         message.from_user.id,
         f'Привет, @{message.from_user.username}!, чтобы использовать бота, нужно авторизоваться c помощью студенческого билета. Для этого нажмите кнопку "Авторизация".',
@@ -72,7 +81,7 @@ async def auth_send(bot, message):
     )
 
 
-def authorize(login: str, password: str) -> Union[bool, tuple[str, str]]:
+async def authorize(login: str, password: str) -> Union[bool, tuple[str, str]]:
     """
     Checks if user is student or not
     If student return fullname and faculty

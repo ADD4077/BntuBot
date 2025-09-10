@@ -3,6 +3,7 @@ import pytz
 import asyncio
 import aiosqlite
 import json
+import hashlib
 
 from aiogram.fsm.context import FSMContext
 from aiogram import Bot, Dispatcher, types, flags
@@ -14,8 +15,10 @@ from aiogram.utils.keyboard import InlineKeyboardMarkup
 # removed using this
 from func import get_week_and_day, \
                  get_tomorrow_week_and_day, \
+                 authorize, \
                  Form, \
-                 AcceptAuthForm
+                 AcceptAuthForm, \
+                 AutoAuth
 
 from middleware import AuthorizationMiddleware
 
@@ -134,7 +137,59 @@ async def main_menu(callback: types.CallbackQuery):
             )
 
 
-@dp.callback_query(F.data == "auth")
+@dp.callback_query(F.data == "auto_auth")
+async def auto_auth_begin(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.delete()
+    await callback.message.answer(
+        f"Отправьте текстом номер Вашего студенческого билета (чёрный). Без пробелов, лишних символов, запятых и т.д.",
+    )
+    await state.set_state(AutoAuth.student_code)
+
+
+@dp.message(AutoAuth.student_code)
+async def auto_auth_end(message: types.Message, state: FSMContext):
+    await message.answer(
+        f"Отлично! Теперь также отправьте красный номер на студенческом.",
+    )
+    await state.update_data(student_code=message.text)
+    await state.set_state(AutoAuth.code)
+
+@dp.message(AutoAuth.code)
+async def auto_auth_end(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    student_code = data.get("student_code")
+    await state.clear()
+    code = message.text
+    auth_status = await authorize(student_code, code)
+    if auth_status == -1:
+        b_auth = types.InlineKeyboardButton(
+            text="Вручную",
+            callback_data="support_auth"
+        )
+        markup = InlineKeyboardMarkup(inline_keyboard=[[b_auth]])
+        await message.answer(
+            f'Ошибка сервера. Система БНТУ не отвечает. Автоматическая авторизация временно недоступна, но Вы можете авторизоваться вручную через фото профиля по кнопке "Вручную".',
+            reply_markup=markup
+        )
+    elif auth_status == 0:
+        await message.answer(
+            f"Студент с такими данными не найден в системе БНТУ. Вы можете повторить попытку, написав /start.",
+        )
+    else:
+        async with aiosqlite.connect("server.db") as db:
+            async with db.cursor() as cursor:
+                code = hashlib.sha256(code.encode()).hexdigest()
+                await cursor.execute(
+                    "INSERT INTO users VALUES (?, ?, ?, ?, ?)",
+                    (message.from_user.id, auth_status[0], auth_status[1], student_code, code)
+                )
+            await db.commit()
+        await message.answer(f'{auth_status[0]}, авторизация прошла успешно! Теперь Вы подтвержденный студент БНТУ! Вы можете вызвать главное меню командой /start')
+        await bot.send_message(
+            id_admin, f'Пользователь авторизован @{message.from_user.username} ({message.from_user.full_name})'
+        )
+
+@dp.callback_query(F.data == "support_auth")
 async def auth_begin(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await callback.message.answer_photo(
@@ -310,7 +365,7 @@ async def schedule(callback: types.CallbackQuery):
             )).fetchone())[0]
     group = str(student_code)[:-2]
     if callback.data.split()[1] == 'week':
-        week, day = get_week_and_day()
+        week, day = await get_week_and_day()
         back = types.InlineKeyboardButton(
             text="⬅️ Назад",
             callback_data="schedule"
@@ -329,7 +384,7 @@ async def schedule(callback: types.CallbackQuery):
             reply_markup=markup, parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'next_week':
-        week, day = get_week_and_day()
+        week, day = await get_week_and_day()
         reversing_list = [1, 0]
         week = reversing_list[week]
         back = types.InlineKeyboardButton(
@@ -350,7 +405,7 @@ async def schedule(callback: types.CallbackQuery):
             reply_markup=markup, parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'together':
-        week, day = get_week_and_day()
+        week, day = await get_week_and_day()
         back = types.InlineKeyboardButton(
             text="⬅️ Назад",
             callback_data="schedule"
@@ -370,7 +425,7 @@ async def schedule(callback: types.CallbackQuery):
             reply_markup=markup, parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'tomorrow':
-        week, day = get_tomorrow_week_and_day()
+        week, day = await get_tomorrow_week_and_day()
         back = types.InlineKeyboardButton(
             text="⬅️ Назад",
             callback_data="schedule"
@@ -403,8 +458,13 @@ async def help(callback: types.CallbackQuery):
         text="⬅️ Назад",
         callback_data="main_menu"
     )
-    row = [back]
-    rows = [row]
+    row_back = [back]
+    b_privacy = types.InlineKeyboardButton(
+        text="Политика конфиденциальности",
+        url=f"https://telegra.ph/Politika-konfidencialnosti-09-08-51"
+    )
+    row_privacy = [b_privacy]
+    rows = [row_back, row_privacy]
     markup = InlineKeyboardMarkup(inline_keyboard=rows)
     await callback.message.delete()
     await callback.message.answer(
