@@ -421,7 +421,7 @@ async def main():
                 FullName TEXT,
                 faculty TEXT,
                 student_code TEXT,
-                code TEXT PRIMARY KEY
+                code TEXT UNIQUE
             )""")
         await db.commit()
     me = await bot.get_me()
