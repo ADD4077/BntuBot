@@ -365,7 +365,8 @@ async def schedule(callback: types.CallbackQuery):
             )).fetchone())[0]
     group = str(student_code)[:-2]
     if callback.data.split()[1] == 'week':
-        week, day = await get_week_and_day()
+        date = await get_week_and_day()
+        week, day = date
         back = types.InlineKeyboardButton(
             text="⬅️ Назад",
             callback_data="schedule"
@@ -384,7 +385,8 @@ async def schedule(callback: types.CallbackQuery):
             reply_markup=markup, parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'next_week':
-        week, day = await get_week_and_day()
+        date = await get_week_and_day()
+        week, day = date
         reversing_list = [1, 0]
         week = reversing_list[week]
         back = types.InlineKeyboardButton(
@@ -405,7 +407,8 @@ async def schedule(callback: types.CallbackQuery):
             reply_markup=markup, parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'together':
-        week, day = await get_week_and_day()
+        date = await get_week_and_day()
+        week, day = date
         back = types.InlineKeyboardButton(
             text="⬅️ Назад",
             callback_data="schedule"
@@ -425,7 +428,8 @@ async def schedule(callback: types.CallbackQuery):
             reply_markup=markup, parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'tomorrow':
-        week, day = await get_tomorrow_week_and_day()
+        date = await get_tomorrow_week_and_day()
+        week, day = date
         back = types.InlineKeyboardButton(
             text="⬅️ Назад",
             callback_data="schedule"
