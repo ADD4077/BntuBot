@@ -39,8 +39,8 @@ bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 tz = pytz.timezone("Europe/Moscow")
 
-with open('schedule.json', 'r', encoding="utf8") as json_file:
-    schedule_base = json.load(json_file)
+# with open('schedule.json', 'r', encoding="utf8") as json_file:
+#     schedule_base = json.load(json_file)
 
 
 with open("passes.json", "r", encoding="utf8") as jsonfile:
@@ -59,30 +59,35 @@ async def start(message: types.Message):
         callback_data="passes"
     )
     row_lessons = [b_schedule, b_pass]
-    b_litter = types.InlineKeyboardButton(
-        text="📜 Литература",
-        callback_data="litterature"
-    )
-    row_lit = [b_litter]
+    # b_litter = types.InlineKeyboardButton(
+    #     text="📜 Литература",
+    #     callback_data="litterature"
+    # )
+    # row_lit = [b_litter]
     b_map = types.InlineKeyboardButton(
         text="🗺️ Карта",
         callback_data="map"
+    )
+    row_map = [b_map]
+    b_tgk = types.InlineKeyboardButton(
+        text="📎 Наш Канал",
+        url="https://t.me/BNTUnity"
     )
     b_site = types.InlineKeyboardButton(
         text="🌐 Сайт БНТУ",
         url="https://bntu.by"
     )
-    row_site = [b_map, b_site]
+    row_url = [b_tgk, b_site]
     b_help = types.InlineKeyboardButton(
         text="🛠️ Поддержка",
         callback_data="help"
     )
     row_help = [b_help]
-    rows = [row_lessons, row_lit, row_site, row_help]
+    rows = [row_lessons, row_map, row_url, row_help]
     main_menu_markup = InlineKeyboardMarkup(inline_keyboard=rows)
     await message.answer_photo(
             photo=main_menu_image,
-            caption=f"Рады вас видеть, @{message.from_user.username}!\n\nЭто БОТ инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\nБот может показать Вам расписание или требования для автомата по разным предметам.\n\n— Быстро\n— Надёжно\n— Проверено",
+            caption = f"💚 Рады вас видеть, @{message.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
             reply_markup=main_menu_markup
         )
 
@@ -100,31 +105,36 @@ async def main_menu(callback: types.CallbackQuery):
         callback_data="passes"
     )
     row_lessons = [b_schedule, b_pass]
-    b_litter = types.InlineKeyboardButton(
-        text="📜 Литература",
-        callback_data="litterature"
-    )
-    row_lit = [b_litter]
+    # b_litter = types.InlineKeyboardButton(
+    #     text="📜 Литература",
+    #     callback_data="litterature"
+    # )
+    # row_lit = [b_litter]
     b_map = types.InlineKeyboardButton(
         text="🗺️ Карта",
         callback_data="map"
+    )
+    row_map = [b_map]
+    b_tgk = types.InlineKeyboardButton(
+        text="📎 Наш Канал",
+        url="https://t.me/BNTUnity"
     )
     b_site = types.InlineKeyboardButton(
         text="🌐 Сайт БНТУ",
         url="https://bntu.by"
     )
-    row_site = [b_map, b_site]
+    row_url = [b_tgk, b_site]
     b_help = types.InlineKeyboardButton(
         text="🛠️ Поддержка",
         callback_data="help"
     )
     row_help = [b_help]
-    rows = [row_lessons, row_lit, row_site, row_help]
+    rows = [row_lessons, row_map, row_url, row_help]
     main_menu_markup = InlineKeyboardMarkup(inline_keyboard=rows)
     try:
         await callback.message.edit_caption(
             photo=main_menu_image,
-            caption=f"Рады вас видеть, @{callback.from_user.username}!\n\nЭто БОТ инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\nБот может показать Вам расписание или требования для автомата по разным предметам.\n\n— Быстро\n— Надёжно\n— Проверено",
+            caption = f"💚 Рады вас видеть, @{callback.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
             reply_markup=main_menu_markup
         )
     # dont use bare except
@@ -132,7 +142,7 @@ async def main_menu(callback: types.CallbackQuery):
         await callback.message.delete()
         await callback.message.answer_photo(
                 photo=main_menu_image,
-                caption=f"Рады вас видеть, @{callback.from_user.username}!\n\nЭто БОТ инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\nБот может показать Вам расписание или требования для автомата по разным предметам.\n\n— Быстро\n— Надёжно\n— Проверено",
+                caption = f"💚 Рады вас видеть, @{callback.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
                 reply_markup=main_menu_markup
             )
 
@@ -141,7 +151,7 @@ async def main_menu(callback: types.CallbackQuery):
 async def auto_auth_begin(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await callback.message.answer(
-        f"Отправьте текстом номер Вашего студенческого билета (чёрный). Без пробелов, лишних символов, запятых и т.д.",
+        f"🧩 Отправьте текстом номер Вашего студенческого билета (чёрный). Без пробелов, лишних символов, запятых и т.д.",
     )
     await state.set_state(AutoAuth.student_code)
 
@@ -149,7 +159,7 @@ async def auto_auth_begin(callback: types.CallbackQuery, state: FSMContext):
 @dp.message(AutoAuth.student_code)
 async def auto_auth_end(message: types.Message, state: FSMContext):
     await message.answer(
-        f"Отлично! Теперь также отправьте красный номер на студенческом.",
+        f"🧩 Отлично! Теперь также отправьте красный номер на студенческом.",
     )
     await state.update_data(student_code=message.text)
     await state.set_state(AutoAuth.code)
@@ -163,17 +173,17 @@ async def auto_auth_end(message: types.Message, state: FSMContext):
     auth_status = await authorize(student_code, code)
     if auth_status == -1:
         b_auth = types.InlineKeyboardButton(
-            text="Вручную",
+            text="🔐 Вручную",
             callback_data="support_auth"
         )
         markup = InlineKeyboardMarkup(inline_keyboard=[[b_auth]])
         await message.answer(
-            f'Ошибка сервера. Система БНТУ не отвечает. Автоматическая авторизация временно недоступна, но Вы можете авторизоваться вручную через фото профиля по кнопке "Вручную".',
+            f'⚠️ Ошибка сервера. Система БНТУ не отвечает. Автоматическая авторизация временно недоступна, но Вы можете авторизоваться вручную через фото профиля по кнопке "Вручную".',
             reply_markup=markup
         )
     elif auth_status == 0:
         await message.answer(
-            f"Студент с такими данными не найден в системе БНТУ. Вы можете повторить попытку, написав /start.",
+            f"❌ Студент с такими данными не найден в системе БНТУ. Вы можете повторить попытку, написав /start.",
         )
     else:
         async with aiosqlite.connect("server.db") as db:
@@ -184,9 +194,9 @@ async def auto_auth_end(message: types.Message, state: FSMContext):
                     (message.from_user.id, auth_status[0], auth_status[1], student_code, code)
                 )
             await db.commit()
-        await message.answer(f'{auth_status[0]}, авторизация прошла успешно! Теперь Вы подтвержденный студент БНТУ! Вы можете вызвать главное меню командой /start')
+        await message.answer(f'✅ {auth_status[0]}, авторизация прошла успешно! Теперь Вы подтвержденный студент БНТУ! Вы можете вызвать главное меню командой /start')
         await bot.send_message(
-            id_admin, f'Пользователь авторизован @{message.from_user.username} ({message.from_user.full_name})'
+            id_admin, f'✅ Пользователь автоматически авторизован @{message.from_user.username} ({message.from_user.full_name}).'
         )
 
 @dp.callback_query(F.data == "support_auth")
@@ -194,7 +204,7 @@ async def auth_begin(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await callback.message.answer_photo(
         photo=example_photo,
-        caption=f"Отправьте фото Вашего студенческого билета, чтобы мы могли убедиться в том, что Вы являетесь нашим студентом. Фото должно быть чётким, в хорошем освещении и без бликов.",
+        caption=f"📷 Отправьте фото Вашего студенческого билета, чтобы мы могли убедиться в том, что Вы являетесь нашим студентом. Фото должно быть чётким, в хорошем освещении и без бликов.",
     )
     await state.set_state(Form.photo)
 
@@ -204,7 +214,7 @@ async def auth_end(message: types.Message, state: FSMContext):
     if not message.photo:
         return await message.answer("Пожалуйста, отправьте именно фото.")
     b_auth = types.InlineKeyboardButton(
-        text="Авторизовать",
+        text="🔐 Авторизовать",
         callback_data=f"accept_auth {message.from_user.id}"
     )
     row_auth = [b_auth]
@@ -241,10 +251,11 @@ async def accept_auth_2(message: types.Message, state: FSMContext):
     data = await state.get_data()
     id = data.get("id")
     await state.clear()
-    fio = message.text.split(', ')[0]
+    fio = message.text.split(',')[0]
     fac = message.text.split(',')[1].replace(' ', '')
-    student_code = int(message.text.split(',')[2])
-    bilet_code = int(message.text.split(',')[3])
+    student_code = message.text.split(',')[2]
+    bilet_code = message.text.split(',')[3]
+    code = hashlib.sha256(bilet_code.encode()).hexdigest()
     async with aiosqlite.connect("server.db") as db:
         async with db.cursor() as cursor:
             await cursor.execute(
@@ -254,7 +265,7 @@ async def accept_auth_2(message: types.Message, state: FSMContext):
         await db.commit()
     await message.answer("Пользователь был успешно авторизован.")
     await bot.send_message(
-        id, f'{fio.split()[1]}, авторизация была подтверждена, теперь Вы подтвержденный студент БНТУ! Вы можете вызвать главное меню командой /start'
+        id, f'✅ {fio.split()[1]}, авторизация была подтверждена, теперь Вы подтвержденный студент БНТУ! Вы можете вызвать главное меню командой /start'
     )
 
 
@@ -291,7 +302,7 @@ async def passes_button(callback: types.CallbackQuery):
     rows.append([back])
     markup = InlineKeyboardMarkup(inline_keyboard=rows)
     await callback.message.edit_caption(
-        caption='Выберите нужный Вам предмет:',
+        caption='📗 Выберите нужный Вам предмет:',
         reply_markup=markup
     )
 
@@ -341,7 +352,7 @@ async def schedule(callback: types.CallbackQuery):
     markup = InlineKeyboardMarkup(inline_keyboard=rows)
     try:
         await callback.message.edit_caption(
-            caption='Выберите нужное Вам расписание занятий:',
+            caption='📚 Выберите нужное Вам расписание занятий:',
             reply_markup=markup
             )
     # specify your exceptions
@@ -349,7 +360,7 @@ async def schedule(callback: types.CallbackQuery):
         await callback.message.delete()
         await callback.message.answer_photo(
             photo=main_menu_image,
-            caption='Выберите нужное Вам расписание занятий:',
+            caption='📚 Выберите нужное Вам расписание занятий:',
             reply_markup=markup
         )
 
@@ -363,9 +374,11 @@ async def schedule(callback: types.CallbackQuery):
                 "SELECT student_code FROM users WHERE id = (?)",
                 (callback.from_user.id, )
             )).fetchone())[0]
-    group = str(student_code)[:-2]
+    group = student_code[:-2]
+    with open(f"schedules/schedule_{group}.json", "r", encoding='cp1251') as jsonfile:
+        schedule_base = json.load(jsonfile)['Schedule']
     if callback.data.split()[1] == 'week':
-        date = await get_week_and_day()
+        date = get_week_and_day()
         week, day = date
         back = types.InlineKeyboardButton(
             text="⬅️ Назад",
@@ -375,9 +388,9 @@ async def schedule(callback: types.CallbackQuery):
         rows = [row]
         markup = InlineKeyboardMarkup(inline_keyboard=rows)
         text = ''
-        for i in schedule_base[group][week]:
+        for i in schedule_base[week]:
             text += f"\n{i}:\n"
-            for j in schedule_base[group][week][i]:
+            for j in schedule_base[week][i]:
                 text += f'<blockquote>{j["Time"]} | {j["Matter"]}\n{j["Frame"]} корп., {j["Classroom"]} аудит.\n{j["Teacher"]}</blockquote>\n'
         await callback.message.delete()
         await callback.message.answer(
@@ -385,7 +398,7 @@ async def schedule(callback: types.CallbackQuery):
             reply_markup=markup, parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'next_week':
-        date = await get_week_and_day()
+        date = get_week_and_day()
         week, day = date
         reversing_list = [1, 0]
         week = reversing_list[week]
@@ -397,9 +410,9 @@ async def schedule(callback: types.CallbackQuery):
         rows = [row]
         markup = InlineKeyboardMarkup(inline_keyboard=rows)
         text = ''
-        for i in schedule_base[group][week]:
+        for i in schedule_base[week]:
             text += f"\n{i}:\n"
-            for j in schedule_base[group][week][i]:
+            for j in schedule_base[week][i]:
                 text += f'<blockquote>{j["Time"]} | {j["Matter"]}\n{j["Frame"]} корп., {j["Classroom"]} аудит.\n{j["Teacher"]}</blockquote>\n'
         await callback.message.delete()
         await callback.message.answer(
@@ -407,7 +420,7 @@ async def schedule(callback: types.CallbackQuery):
             reply_markup=markup, parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'together':
-        date = await get_week_and_day()
+        date = get_week_and_day()
         week, day = date
         back = types.InlineKeyboardButton(
             text="⬅️ Назад",
@@ -418,7 +431,7 @@ async def schedule(callback: types.CallbackQuery):
         markup = InlineKeyboardMarkup(inline_keyboard=rows)
         text = ''
         try:
-            for i in schedule_base[group][week][day]:
+            for i in schedule_base[week][day]:
                 text += f'<blockquote>{i["Time"]} | {i["Matter"]}\n{i["Frame"]} корп., {i["Classroom"]} аудит.\n{i["Teacher"]}</blockquote>\n'
         except KeyError:
             text += "Занятий нет 🎉"
@@ -428,7 +441,7 @@ async def schedule(callback: types.CallbackQuery):
             reply_markup=markup, parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'tomorrow':
-        date = await get_tomorrow_week_and_day()
+        date = get_tomorrow_week_and_day()
         week, day = date
         back = types.InlineKeyboardButton(
             text="⬅️ Назад",
@@ -439,7 +452,7 @@ async def schedule(callback: types.CallbackQuery):
         markup = InlineKeyboardMarkup(inline_keyboard=rows)
         text = ''
         try:
-            for i in schedule_base[group][week][day]:
+            for i in schedule_base[week][day]:
                 text += f'<blockquote>{i["Time"]} | {i["Matter"]}\n{i["Frame"]} корп., {i["Classroom"]} аудит.\n{i["Teacher"]}</blockquote>\n'
         except KeyError:
             text += "Занятий нет 🎉"

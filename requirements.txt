@@ -1,2 +1,5 @@
 aiogram==3.18.0
 pytz==2025.1
+python-dotenv==1.1.1
+aiosqlite==0.21.0
+beautifulsoup4==4.13.3

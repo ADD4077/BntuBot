@@ -8,11 +8,10 @@ from typing import Union
 
 import bs4
 import requests
-import hashlib
 
 requests.packages.urllib3.disable_warnings()
 
-async def get_week_and_day(today: Union[None, datetime] = None) -> tuple[int, str]:
+def get_week_and_day(today: Union[None, datetime] = None) -> tuple[int, str]:
     """
     Returns number of week and name of the day as tuple
     If today variable isnt provided uses datetime.now().date()
@@ -42,7 +41,7 @@ async def get_week_and_day(today: Union[None, datetime] = None) -> tuple[int, st
 
 # Better way to do this will be to add tomorrow argument to get_week_and_day
 # Subject to discuss
-async def get_tomorrow_week_and_day(today=None):
+def get_tomorrow_week_and_day(today=None):
     if today is None:
         today = datetime.now().date()
     else:
@@ -66,7 +65,7 @@ class AutoAuth(StatesGroup):
 
 async def auth_send(bot, message):
     b_auth = types.InlineKeyboardButton(
-        text="Авторизоваться",
+        text="🔐 Авторизоваться",
         callback_data="auto_auth"
     )
     b_privacy = types.InlineKeyboardButton(
