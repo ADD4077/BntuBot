@@ -11,6 +11,8 @@ import requests
 
 import json
 
+import re
+
 with open("./literature_per_faculty.json", "r") as jsonfile:
     literature_per_faculty = json.load(jsonfile)
 
@@ -134,6 +136,9 @@ def next_element(element):
 
 
 def parse_literature() -> None:
+    """
+    Parses literature and saves it in ./books/ directory
+    """
     for faculty, endpoint in literature_per_faculty.items():
         literature = {}
         response = requests.get(endpoint)
@@ -191,3 +196,114 @@ def parse_literature() -> None:
             "w", encoding="utf8"
         ) as jsonfile:
             json.dump(literature, jsonfile, indent=4, ensure_ascii=False)
+    return None
+
+
+replacements = {
+    'Практ': 'Практ.',
+    'Лекц': 'Лекц.',
+    'Лаб': 'Лаб.'
+}
+
+pattern = re.compile(r'\(\s*(Практ|Лекц|Лаб)[^)]*\)', re.IGNORECASE)
+
+
+def parse_schedule() -> None:
+    """
+    Parses schedules and saves it into ./schedules/ directory
+    """
+    faculties = [
+        "atf", "fgde", "msf", "mtf",
+        "fmmp", "ef", "fitr", "ftug",
+        "ipf", "fes", "af", "sf",
+        "psf", "ftk", "vtf", "stf"
+    ]
+
+    for faculty in faculties:
+        endpoint = f"https://bntu.by/raspisanie/{faculty}"
+        response = requests.get(endpoint, verify=False)
+        soup = bs4.BeautifulSoup(response.content, "html.parser")
+        courses = soup.find_all("input", class_="course-checkbox")
+        groups = []
+        group_div = soup.find("div", attrs={"id": "group"})
+
+        for i in range(len(courses)):
+            select = group_div.find("select", attrs={"name": f"group{i+1}"})
+            for child in select.findChildren():
+                if child["value"] != "Номер:":
+                    groups.append(child["value"])
+
+        for group in groups:
+            headers = {"cookie": f"group={group};"}
+            response = requests.get(
+                endpoint+"/table",
+                headers=headers,
+                verify=False
+            )
+            soup = bs4.BeautifulSoup(response.content, "html.parser")
+            tables = soup.find_all("table", class_="sheduleTable")
+            schedule_data = {}
+            schedule_data["Schedule"] = []
+            for week in range(2):
+                table = tables[week]
+                schedule_data["Schedule"].append({})
+                if table:
+                    if table.find("tbody"):
+                        rows = table.find("tbody").find_all("tr")
+                    else:
+                        rows = table.find_all("tr")
+
+                    for row in rows:
+                        day_element = row.find("td", class_="newDay")
+
+                        if day_element:
+                            day = day_element.text.replace("\n", "")\
+                                                  .replace(" ", "")
+                            schedule_data["Schedule"][week][day] = []
+
+                        time_element = row.find("td", class_="time")
+
+                        if not time_element:
+                            continue
+
+                        time = time_element.text
+
+                        matter_element = next_element(time_element)
+                        matter = matter_element.text
+
+                        teacher_element = next_element(matter_element)
+                        teacher = teacher_element.text
+
+                        frame_element = next_element(teacher_element)
+                        frame = frame_element.text
+
+                        classroom_element = next_element(frame_element)
+                        classroom = classroom_element.text
+
+                        if time:
+                            schedule_data["Schedule"][week][day].append(
+                                {
+                                    "Time": time,
+                                    "Matter": pattern.sub(
+                                        lambda match:
+                                            f"({replacements[match.group(1).capitalize()]})",
+                                        matter
+                                    ),
+                                    "Teacher": re.sub(
+                                        r'\s+',
+                                        ' ', teacher
+                                    ).lstrip().rstrip(),
+                                    "Frame": frame,
+                                    "Classroom": classroom
+                                }
+                            )
+            with open(
+                f"./schedules/schedule_{group}.json", "w", encoding="utf8"
+            ) as jsonfile:
+                json.dump(
+                    schedule_data,
+                    jsonfile,
+                    indent=4,
+                    ensure_ascii=False
+                )
+    return None
