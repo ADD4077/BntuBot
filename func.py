@@ -9,7 +9,13 @@ from typing import Union
 import bs4
 import requests
 
+import json
+
+with open("./literature_per_faculty.json", "r") as jsonfile:
+    literature_per_faculty = json.load(jsonfile)
+
 requests.packages.urllib3.disable_warnings()
+
 
 def get_week_and_day(today: Union[None, datetime] = None) -> tuple[int, str]:
     """
@@ -70,7 +76,7 @@ async def auth_send(bot, message):
     )
     b_privacy = types.InlineKeyboardButton(
         text="Политика конфиденциальности",
-        url=f"https://telegra.ph/Politika-konfidencialnosti-09-08-51"
+        url="https://telegra.ph/Politika-konfidencialnosti-09-08-51"
     )
     markup = InlineKeyboardMarkup(inline_keyboard=[[b_auth], [b_privacy]])
     await bot.send_message(
@@ -121,3 +127,67 @@ async def authorize(login: str, password: str) -> Union[bool, tuple[str, str]]:
         faculty = faculty.replace(" ", "")
         return fullname, faculty
     return False
+
+
+def next_element(element):
+    return element.next_sibling.next_sibling
+
+
+def parse_literature() -> None:
+    for faculty, endpoint in literature_per_faculty.items():
+        literature = {}
+        response = requests.get(endpoint)
+        soup = bs4.BeautifulSoup(response.content, "html.parser")
+        collections = soup.find_all("h4", class_="artifact-title")
+        for collection in collections:
+            children = collection.find_all(recursive=False)
+            link_element = children[0]
+            if link_element.find_all("span", recursive=False):
+                link = "https://rep.bntu.by" + link_element["href"] + \
+                       "/browse?rpp=9999&sort_by=1&type=title"
+                collection_title = \
+                    link_element.find_all(recursive=False)[0].text
+                literature[collection_title] = {}
+                literature_count = children[1].text
+                literature[collection_title]["count"] = literature_count
+                literature[collection_title]["items"] = []
+                response = requests.get(link)
+                soup = bs4.BeautifulSoup(response.content, "html.parser")
+                rows = soup.find_all("div", class_="item-wrapper")
+                for row in rows:
+                    literature[collection_title]["items"].append({})
+                    title = \
+                        row.find("h4", class_="artifact-title").find("a").text
+                    literature[collection_title]["items"][-1]["title"] = title
+                    image_element = row.find(
+                        "img",
+                        class_=["img-responsive", "img-thumbnail"]
+                    )
+                    if image_element.get("src"):
+                        image_link = \
+                            "https://rep.bntu.by" + image_element["src"]
+                    else:
+                        image_link = None
+                    literature[collection_title]["items"][-1]["image_url"] = \
+                        image_link
+                    authors = \
+                        row.find(
+                            "span", class_="author"
+                        ).small.find_all("span")
+                    literature[collection_title]["items"][-1]["authors"] = []
+                    for author in authors:
+                        literature[collection_title]["items"][-1]["authors"] \
+                            .append(author.text)
+                    publishing_date = row.find("span", class_="date").text
+                    literature[collection_title]["items"][-1]["publishing_date"] = \
+                        publishing_date
+                    description = \
+                        row.find("div", class_="artifact-abstract").text
+                    literature[collection_title]["items"][-1]["description"] = \
+                        description
+
+        with open(
+            f"./books/literature_{faculty}.json",
+            "w", encoding="utf8"
+        ) as jsonfile:
+            json.dump(literature, jsonfile, indent=4, ensure_ascii=False)
