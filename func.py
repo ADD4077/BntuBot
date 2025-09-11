@@ -161,8 +161,9 @@ def parse_literature() -> None:
                 rows = soup.find_all("div", class_="item-wrapper")
                 for row in rows:
                     literature[collection_title]["items"].append({})
-                    title = \
-                        row.find("h4", class_="artifact-title").find("a").text
+                    a_element = row.find("h4", class_="artifact-title").find("a")
+                    title = a_element.text
+                    literature_link = "https://rep.bntu.by" + a_element["href"]
                     literature[collection_title]["items"][-1]["title"] = title
                     image_element = row.find(
                         "img",
@@ -190,6 +191,22 @@ def parse_literature() -> None:
                         row.find("div", class_="artifact-abstract").text
                     literature[collection_title]["items"][-1]["description"] = \
                         description
+                    response = requests.get(literature_link)
+                    soup = bs4.BeautifulSoup(response.content, "html.parser")
+                    i_element = soup.find("i", class_="glyphicon-file")
+                    literature[collection_title]["items"][-1]["download"] = {}
+                    if i_element:
+                        a_element = i_element.find_parent("a")
+                        size = a_element.text.split(" (")[1].replace(")", "")
+                        filetype = a_element.text.split(" (")[0]
+                        download_link = "https://rep.bntu.by" + a_element["href"]
+                    else:
+                        size = "0"
+                        filetype = "N/A"
+                        download_link = "Not found"
+                    literature[collection_title]["items"][-1]["download"]["size"] = size
+                    literature[collection_title]["items"][-1]["download"]["type"] = filetype
+                    literature[collection_title]["items"][-1]["download"]["download_link"] = download_link
 
         with open(
             f"./books/literature_{faculty}.json",
