@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from aiogram.fsm.state import State, StatesGroup
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardMarkup
+from aiogram.utils.media_group import MediaGroupBuilder
 
 from typing import Union
 
@@ -198,7 +199,7 @@ def parse_literature() -> None:
                     if i_element:
                         a_element = i_element.find_parent("a")
                         size = a_element.text.split(" (")[1].replace(")", "")
-                        filetype = a_element.text.split(" (")[0]
+                        filetype = a_element.text.split(" (")[0].lstrip()
                         download_link = "https://rep.bntu.by" + a_element["href"]
                     else:
                         size = "0"
@@ -230,10 +231,10 @@ def parse_schedule() -> None:
     Parses schedules and saves it into ./schedules/ directory
     """
     faculties = [
-        "atf", "fgde", "msf", "mtf",
-        "fmmp", "ef", "fitr", "ftug",
-        "ipf", "fes", "af", "sf",
-        "psf", "ftk", "vtf", "stf"
+        "atf",  "fgde", "msf",  "mtf",
+        "fmmp", "ef",   "fitr", "ftug",
+        "ipf",  "fes",  "af",   "sf",
+        "psf",  "ftk",  "vtf",  "stf"
     ]
 
     for faculty in faculties:
@@ -246,7 +247,7 @@ def parse_schedule() -> None:
 
         for i in range(len(courses)):
             select = group_div.find("select", attrs={"name": f"group{i+1}"})
-            for child in select.findChildren():
+            for child in select.find_all(recursive=False):
                 if child["value"] != "Номер:":
                     groups.append(child["value"])
 
@@ -324,3 +325,24 @@ def parse_schedule() -> None:
                     ensure_ascii=False
                 )
     return None
+
+
+async def send_message(bot, chat_id, message):
+    text = message.text
+    photos = message.photo
+    videos = message.video
+    files = message.document
+    sticker = message.sticker
+    builder = MediaGroupBuilder(caption=text)
+    if photos:
+        builder.add_photo(media=photos[-1].file_id)
+    if videos:
+        builder.add_video(media=videos.file_id)
+    if files:
+        builder.add_document(media=files.file_id)
+    if photos or videos or files:
+        return await bot.send_media_group(chat_id, media=builder.build())
+    if sticker:
+        return await bot.send_sticker(chat_id, sticker=sticker.file_id)
+    if text:
+        return await bot.send_message(chat_id, text)

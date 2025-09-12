@@ -20,6 +20,7 @@ from func import get_week_and_day, \
                  AcceptAuthForm, \
                  AutoAuth
 
+import func
 from middleware import AuthorizationMiddleware
 
 from dotenv import load_dotenv
@@ -83,14 +84,18 @@ async def start(message: types.Message):
         callback_data="help"
     )
     row_help = [b_help]
-    rows = [row_lessons, row_map, row_url, row_help]
+    b_chat = types.InlineKeyboardButton(
+        text="Анонимный чат",
+        callback_data="anonymous_chat"
+    )
+    row_chat = [b_chat]
+    rows = [row_lessons, row_map, row_url, row_help, row_chat]
     main_menu_markup = InlineKeyboardMarkup(inline_keyboard=rows)
     await message.answer_photo(
             photo=main_menu_image,
-            caption = f"💚 Рады вас видеть, @{message.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
+            caption=f"💚 Рады вас видеть, @{message.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
             reply_markup=main_menu_markup
         )
-
 
 
 @dp.callback_query(F.data == "main_menu")
@@ -129,12 +134,17 @@ async def main_menu(callback: types.CallbackQuery):
         callback_data="help"
     )
     row_help = [b_help]
-    rows = [row_lessons, row_map, row_url, row_help]
+    b_chat = types.InlineKeyboardButton(
+        text="Анонимный чат",
+        callback_data="anonymous_chat"
+    )
+    row_chat = [b_chat]
+    rows = [row_lessons, row_map, row_url, row_help, row_chat]
     main_menu_markup = InlineKeyboardMarkup(inline_keyboard=rows)
     try:
         await callback.message.edit_caption(
             photo=main_menu_image,
-            caption = f"💚 Рады вас видеть, @{callback.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
+            caption=f"💚 Рады вас видеть, @{callback.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
             reply_markup=main_menu_markup
         )
     # dont use bare except
@@ -142,7 +152,7 @@ async def main_menu(callback: types.CallbackQuery):
         await callback.message.delete()
         await callback.message.answer_photo(
                 photo=main_menu_image,
-                caption = f"💚 Рады вас видеть, @{callback.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
+                caption=f"💚 Рады вас видеть, @{callback.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
                 reply_markup=main_menu_markup
             )
 
@@ -151,7 +161,7 @@ async def main_menu(callback: types.CallbackQuery):
 async def auto_auth_begin(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await callback.message.answer(
-        f"🧩 Отправьте текстом номер Вашего студенческого билета (чёрный). Без пробелов, лишних символов, запятых и т.д.",
+        "🧩 Отправьте текстом номер Вашего студенческого билета (чёрный). Без пробелов, лишних символов, запятых и т.д.",
     )
     await state.set_state(AutoAuth.student_code)
 
@@ -159,10 +169,11 @@ async def auto_auth_begin(callback: types.CallbackQuery, state: FSMContext):
 @dp.message(AutoAuth.student_code)
 async def auto_auth_end(message: types.Message, state: FSMContext):
     await message.answer(
-        f"🧩 Отлично! Теперь также отправьте красный номер на студенческом.",
+        "🧩 Отлично! Теперь также отправьте красный номер на студенческом.",
     )
     await state.update_data(student_code=message.text)
     await state.set_state(AutoAuth.code)
+
 
 @dp.message(AutoAuth.code)
 async def auto_auth_end(message: types.Message, state: FSMContext):
@@ -178,12 +189,12 @@ async def auto_auth_end(message: types.Message, state: FSMContext):
         )
         markup = InlineKeyboardMarkup(inline_keyboard=[[b_auth]])
         await message.answer(
-            f'⚠️ Ошибка сервера. Система БНТУ не отвечает. Автоматическая авторизация временно недоступна, но Вы можете авторизоваться вручную через фото профиля по кнопке "Вручную".',
+            '⚠️ Ошибка сервера. Система БНТУ не отвечает. Автоматическая авторизация временно недоступна, но Вы можете авторизоваться вручную через фото профиля по кнопке "Вручную".',
             reply_markup=markup
         )
     elif auth_status == 0:
         await message.answer(
-            f"❌ Студент с такими данными не найден в системе БНТУ. Вы можете повторить попытку, написав /start.",
+            "❌ Студент с такими данными не найден в системе БНТУ. Вы можете повторить попытку, написав /start.",
         )
     else:
         async with aiosqlite.connect("server.db") as db:
@@ -199,12 +210,13 @@ async def auto_auth_end(message: types.Message, state: FSMContext):
             id_admin, f'✅ Пользователь автоматически авторизован @{message.from_user.username} ({message.from_user.full_name}).'
         )
 
+
 @dp.callback_query(F.data == "support_auth")
 async def auth_begin(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await callback.message.answer_photo(
         photo=example_photo,
-        caption=f"📷 Отправьте фото Вашего студенческого билета, чтобы мы могли убедиться в том, что Вы являетесь нашим студентом. Фото должно быть чётким, в хорошем освещении и без бликов.",
+        caption="📷 Отправьте фото Вашего студенческого билета, чтобы мы могли убедиться в том, что Вы являетесь нашим студентом. Фото должно быть чётким, в хорошем освещении и без бликов.",
     )
     await state.set_state(Form.photo)
 
@@ -260,13 +272,105 @@ async def accept_auth_2(message: types.Message, state: FSMContext):
         async with db.cursor() as cursor:
             await cursor.execute(
                 "INSERT INTO users VALUES (?, ?, ?, ?, ?)",
-                (id, fio, fac, student_code, bilet_code)
+                (id, fio, fac, student_code, code)
             )
         await db.commit()
     await message.answer("Пользователь был успешно авторизован.")
     await bot.send_message(
         id, f'✅ {fio.split()[1]}, авторизация была подтверждена, теперь Вы подтвержденный студент БНТУ! Вы можете вызвать главное меню командой /start'
     )
+
+
+@dp.callback_query(F.data == "anonymous_chat")
+@flags.authorization(is_authorized=True)
+async def anonymous_chat(callback: types.CallbackQuery):
+    user2_id = callback.from_user.id
+    async with aiosqlite.connect("server.db") as db:
+        async with db.cursor() as cursor:
+            if await (await cursor.execute(
+                "SELECT user1_id, user2_id FROM chats WHERE user1_id = (?) OR user2_id = (?)",
+                (user2_id, user2_id)
+            )).fetchone():
+                return await bot.send_message(
+                    user2_id,
+                    "Вы уже в анонимном чате."
+                )
+            if user1_id := (await (await cursor.execute(
+                "SELECT user1_id FROM chats WHERE user2_id IS NULL"
+            )).fetchone()):
+                user1_id = user1_id[0]
+                await cursor.execute(
+                    "UPDATE chats SET user2_id=(?) WHERE user1_id=(?)",
+                    (user2_id, user1_id)
+                )
+                print(user2_id)
+                print(user1_id)
+                await bot.send_message(
+                    user2_id,
+                    "Собеседник найден."
+                )
+                await bot.send_message(
+                    user1_id,
+                    "Собеседник найден."
+                )
+            else:
+                await cursor.execute(
+                    "INSERT INTO chats (user1_id, user2_id) VALUES (?, ?)",
+                    (user2_id, None)
+                )
+                await bot.send_message(
+                    user2_id,
+                    "Идет поиск собеседника."
+                )
+        await db.commit()
+    return await callback.answer()
+
+
+@dp.message(Command("leave_chat"))
+@flags.authorization(is_authorized=True)
+async def leave_chat(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    async with aiosqlite.connect("server.db") as db:
+        async with db.cursor() as cursor:
+            if user_ids := await (await cursor.execute(
+                "SELECT user1_id, user2_id FROM chats WHERE user1_id = (?) OR user2_id = (?)",
+                (user_id, user_id)
+            )).fetchone():
+                for user_id_ in user_ids:
+                    if user_id_:
+                        await bot.send_message(user_id_, "Диалог окончен.")
+                await cursor.execute(
+                    "DELETE FROM chats WHERE user1_id = (?) OR user2_id = (?)",
+                    (user_id, user_id)
+                )
+        await db.commit()
+    return await callback.answer()
+
+
+@dp.message()
+async def on_message(message: types.message.Message):
+    user_id = message.from_user.id
+    async with aiosqlite.connect("server.db") as db:
+        async with db.cursor() as cursor:
+            if user_ids := await (await cursor.execute(
+                "SELECT user1_id, user2_id FROM chats WHERE user1_id = (?) OR user2_id = (?)",
+                (user_id, user_id)
+            )).fetchone():
+                if user_ids[1] is None:
+                    return
+                if user_ids[0] == user_id:
+                    print(message.photo)
+                    return await func.send_message(
+                        bot,
+                        user_ids[1],
+                        message
+                    )
+                else:
+                    return await func.send_message(
+                        bot,
+                        user_ids[0],
+                        message
+                    )
 
 
 @dp.callback_query(F.data == "map")
@@ -375,7 +479,7 @@ async def schedule(callback: types.CallbackQuery):
                 (callback.from_user.id, )
             )).fetchone())[0]
     group = student_code[:-2]
-    with open(f"schedules/schedule_{group}.json", "r", encoding='cp1251') as jsonfile:
+    with open(f"schedules/schedule_{group}.json", "r", encoding='utf8') as jsonfile:
         schedule_base = json.load(jsonfile)['Schedule']
     if callback.data.split()[1] == 'week':
         date = get_week_and_day()
@@ -500,6 +604,12 @@ async def main():
                 student_code TEXT,
                 code TEXT UNIQUE
             )""")
+            await cursor.execute("""CREATE TABLE IF NOT EXISTS chats(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user1_id INT NOT NULL,
+                user2_id INT
+            )""")
+
         await db.commit()
     me = await bot.get_me()
     print(f'@{me.username} ({me.first_name})')
