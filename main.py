@@ -73,7 +73,7 @@ async def start(message: types.Message):
     b_tgk = types.InlineKeyboardButton(
         text="📎 Наш Канал",
         url="https://t.me/BNTUnity"
-    )
+)
     b_site = types.InlineKeyboardButton(
         text="🌐 Сайт БНТУ",
         url="https://bntu.by"
@@ -303,8 +303,6 @@ async def anonymous_chat(callback: types.CallbackQuery):
                     "UPDATE chats SET user2_id=(?) WHERE user1_id=(?)",
                     (user2_id, user1_id)
                 )
-                print(user2_id)
-                print(user1_id)
                 await bot.send_message(
                     user2_id,
                     "Собеседник найден."
@@ -333,15 +331,19 @@ async def leave_chat(callback: types.CallbackQuery):
     async with aiosqlite.connect("server.db") as db:
         async with db.cursor() as cursor:
             if user_ids := await (await cursor.execute(
-                "SELECT user1_id, user2_id FROM chats WHERE user1_id = (?) OR user2_id = (?)",
+                "SELECT user1_id, user2_id, id FROM chats WHERE user1_id = (?) OR user2_id = (?)",
                 (user_id, user_id)
             )).fetchone():
-                for user_id_ in user_ids:
-                    if user_id_:
-                        await bot.send_message(user_id_, "Диалог окончен.")
+                for i in range(2):
+                    if user_ids[i]:
+                        await bot.send_message(user_ids[i], "Диалог окончен.")
                 await cursor.execute(
                     "DELETE FROM chats WHERE user1_id = (?) OR user2_id = (?)",
                     (user_id, user_id)
+                )
+                await cursor.execute(
+                    "DELETE FROM messages WHERE chat_id = (?)",
+                    (user_ids[-1], )
                 )
         await db.commit()
     return await callback.answer()
@@ -353,24 +355,34 @@ async def on_message(message: types.message.Message):
     async with aiosqlite.connect("server.db") as db:
         async with db.cursor() as cursor:
             if user_ids := await (await cursor.execute(
-                "SELECT user1_id, user2_id FROM chats WHERE user1_id = (?) OR user2_id = (?)",
+                "SELECT user1_id, user2_id, id FROM chats WHERE user1_id = (?) OR user2_id = (?)",
                 (user_id, user_id)
             )).fetchone():
+                chat_id = user_ids[-1]
                 if user_ids[1] is None:
                     return
                 if user_ids[0] == user_id:
-                    print(message.photo)
-                    return await func.send_message(
+                    sent_message = await func.send_message(
                         bot,
                         user_ids[1],
-                        message
+                        message,
+                        chat_id
                     )
                 else:
-                    return await func.send_message(
+                    sent_message = await func.send_message(
                         bot,
                         user_ids[0],
-                        message
+                        message,
+                        chat_id
                     )
+                await cursor.execute(
+                    """INSERT INTO messages
+                    (chat_id, user_message_id, bot_message_id)
+                    VALUES (?, ?, ?)
+                    """,
+                    (chat_id, message.message_id, sent_message.message_id)
+                )
+                await db.commit()
 
 
 @dp.callback_query(F.data == "map")
@@ -608,6 +620,13 @@ async def main():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user1_id INT NOT NULL,
                 user2_id INT
+            )""")
+            await cursor.execute("""CREATE TABLE IF NOT EXISTS messages(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                chat_id INTEGER NOT NULL,
+                user_message_id INTEGER NOT NULL,
+                bot_message_id INTEGER NOT NULL,
+                FOREIGN KEY (chat_id) REFERENCES chats(id)
             )""")
 
         await db.commit()

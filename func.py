@@ -5,6 +5,8 @@ from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardMarkup
 from aiogram.utils.media_group import MediaGroupBuilder
 
+import aiosqlite
+
 from typing import Union
 
 import bs4
@@ -327,7 +329,32 @@ def parse_schedule() -> None:
     return None
 
 
-async def send_message(bot, chat_id, message):
+async def send_message(
+        bot, chat_id: int,
+        message: types.message.Message,
+        anon_chat_id: int
+):
+    replying = message.reply_to_message
+    if replying:
+        reply_message_id = replying.message_id
+        async with aiosqlite.connect("server.db") as db:
+            async with db.cursor() as cursor:
+                if replying.from_user.id != message.from_user.id:
+                    id_for_reply = (await (await cursor.execute(
+                        """SELECT user_message_id FROM messages
+                        WHERE chat_id = ?
+                        AND
+                        bot_message_id = ?""",
+                        (anon_chat_id, reply_message_id)
+                    )).fetchone())[0]
+                else:
+                    id_for_reply = (await (await cursor.execute(
+                        """SELECT bot_message_id FROM messages
+                        WHERE chat_id = ?
+                        AND
+                        user_message_id = ?""",
+                        (anon_chat_id, reply_message_id)
+                    )).fetchone())[0]
     text = message.text
     photos = message.photo
     videos = message.video
@@ -341,8 +368,32 @@ async def send_message(bot, chat_id, message):
     if files:
         builder.add_document(media=files.file_id)
     if photos or videos or files:
-        return await bot.send_media_group(chat_id, media=builder.build())
+        if replying:
+            return (await bot.send_media_group(
+                chat_id,
+                media=builder.build(),
+                reply_to_message_id=id_for_reply
+            ))[0]
+        return (await bot.send_media_group(
+            chat_id,
+            media=builder.build()
+        ))[0]
     if sticker:
-        return await bot.send_sticker(chat_id, sticker=sticker.file_id)
+        if replying:
+            return await bot.send_sticker(
+                chat_id,
+                sticker=sticker.file_id,
+                reply_to_message_id=id_for_reply
+            )
+        return await bot.send_sticker(
+            chat_id,
+            sticker=sticker.file_id
+        )
     if text:
+        if replying:
+            return await bot.send_message(
+                chat_id,
+                text,
+                reply_to_message_id=id_for_reply
+            )
         return await bot.send_message(chat_id, text)
