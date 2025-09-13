@@ -6,7 +6,8 @@ import json
 import hashlib
 
 from aiogram.utils.markdown import hlink
-from aiogram.types import ChosenInlineResult, InlineQuery, InlineQueryResultArticle, InputTextMessageContent
+from aiogram.types import ChosenInlineResult, InlineQuery, \
+                          InlineQueryResultArticle, InputTextMessageContent
 from aiogram.fsm.context import FSMContext
 from aiogram import Bot, Dispatcher, types, flags
 from aiogram.filters.command import Command
@@ -25,6 +26,7 @@ from func import get_week_and_day, \
                  AutoAuth
 
 import func
+from literature_searching import search_literature
 from middleware import AuthorizationMiddleware
 
 from dotenv import load_dotenv
@@ -54,31 +56,27 @@ with open("passes.json", "r", encoding="utf8") as jsonfile:
 
 @dp.inline_query()
 async def inline_handler(inline_query: InlineQuery):
-    query = inline_query.query or "пустой запрос"
-    with open(f"books/literature_af.json", "r", encoding='utf8') as jsonfile:
-        base = json.load(jsonfile)
-    sentences = []
-    all_books = {}
-    for category in base:
-        books = base[category]['items']
-        for book in books:
-            all_books[book['title']] = book
-            sentences.append(book['title'])
-    sentences = search_similar_phrases(inline_query.query, sentences, top_n=10)
+    query = inline_query.query or ""
+    faculty = "af"
+    books = search_literature(f"./books/literature_{faculty}.json", query)
     results = []
-    for id, title in enumerate(sentences):
-        book = all_books[title]
+    for id, book in enumerate(books):
         link = hlink('Скачать', book['download']['download_link'])
+        if len(book["authors"]) == 1:
+            description = f"{book['publishing_date']} | {book['authors'][0]}"
+        else:
+            description = f"{book['publishing_date']} | {book['authors'][0]} и др."
         results.append(InlineQueryResultArticle(
             id=str(id),
             title=book['title'],
             input_message_content=InputTextMessageContent(
                 message_text=f"{book['publishing_date']} | {book['title']}\n\n{book['description']}\n\n{book['authors'][0]}\n\n{link}",
-                parse_mode = "HTML"
+                parse_mode="HTML"
             ),
-            description=f"{book['publishing_date']} | {book['authors'][0]}"
+            description=description
         ))
     await bot.answer_inline_query(inline_query.id, results)
+
 
 @dp.chosen_inline_result()
 async def chosen_inline_handler(result: ChosenInlineResult):
@@ -110,7 +108,7 @@ async def start(message: types.Message):
     b_tgk = types.InlineKeyboardButton(
         text="📎 Наш Канал",
         url="https://t.me/BNTUnity"
-)
+    )
     b_site = types.InlineKeyboardButton(
         text="🌐 Сайт БНТУ",
         url="https://bntu.by"
