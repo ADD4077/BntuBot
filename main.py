@@ -5,16 +5,20 @@ import aiosqlite
 import json
 import hashlib
 
+from aiogram.utils.markdown import hlink
+from aiogram.types import ChosenInlineResult, InlineQuery, InlineQueryResultArticle, InputTextMessageContent
 from aiogram.fsm.context import FSMContext
 from aiogram import Bot, Dispatcher, types, flags
 from aiogram.filters.command import Command
 from aiogram import F
 from aiogram.utils.keyboard import InlineKeyboardMarkup
 
+
 # star imports are bad due to overshadowing and currently
 # removed using this
 from func import get_week_and_day, \
                  get_tomorrow_week_and_day, \
+                 search_similar_phrases, \
                  authorize, \
                  Form, \
                  AcceptAuthForm, \
@@ -46,6 +50,39 @@ tz = pytz.timezone("Europe/Moscow")
 
 with open("passes.json", "r", encoding="utf8") as jsonfile:
     passes = json.load(jsonfile)
+
+
+@dp.inline_query()
+async def inline_handler(inline_query: InlineQuery):
+    query = inline_query.query or "пустой запрос"
+    with open(f"books/literature_af.json", "r", encoding='utf8') as jsonfile:
+        base = json.load(jsonfile)
+    sentences = []
+    all_books = {}
+    for category in base:
+        books = base[category]['items']
+        for book in books:
+            all_books[book['title']] = book
+            sentences.append(book['title'])
+    sentences = search_similar_phrases(inline_query.query, sentences, top_n=10)
+    results = []
+    for id, title in enumerate(sentences):
+        book = all_books[title]
+        link = hlink('Скачать', book['download']['download_link'])
+        results.append(InlineQueryResultArticle(
+            id=str(id),
+            title=book['title'],
+            input_message_content=InputTextMessageContent(
+                message_text=f"{book['publishing_date']} | {book['title']}\n\n{book['description']}\n\n{book['authors'][0]}\n\n{link}",
+                parse_mode = "HTML"
+            ),
+            description=f"{book['publishing_date']} | {book['authors'][0]}"
+        ))
+    await bot.answer_inline_query(inline_query.id, results)
+
+@dp.chosen_inline_result()
+async def chosen_inline_handler(result: ChosenInlineResult):
+    print(result)
 
 
 @dp.message(Command("start"))
@@ -346,7 +383,6 @@ async def leave_chat(callback: types.CallbackQuery):
                     (user_ids[-1], )
                 )
         await db.commit()
-    return await callback.answer()
 
 
 @dp.message()

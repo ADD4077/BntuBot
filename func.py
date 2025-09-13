@@ -1,19 +1,19 @@
-from datetime import datetime, timedelta
-
-from aiogram.fsm.state import State, StatesGroup
-from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardMarkup
 from aiogram.utils.media_group import MediaGroupBuilder
+from aiogram.fsm.state import State, StatesGroup
+from aiogram import types
 
-import aiosqlite
+from datetime import datetime, timedelta
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 
 from typing import Union
-
-import bs4
+import aiosqlite
 import requests
-
 import json
-
+import bs4
 import re
 
 with open("./literature_per_faculty.json", "r") as jsonfile:
@@ -21,6 +21,18 @@ with open("./literature_per_faculty.json", "r") as jsonfile:
 
 requests.packages.urllib3.disable_warnings()
 
+def search_similar_phrases(query: str, candidates, top_n=3):
+    vectorizer = TfidfVectorizer()
+    candidate_vectors = vectorizer.fit_transform(candidates)
+    # Векторизуем запрос в ту же пространственный базу
+    query_vec = vectorizer.transform([query])
+    # Считаем косинусное сходство запроса с каждым предложением
+    similarity = cosine_similarity(query_vec, candidate_vectors).flatten()
+    # Получаем топ N индексов самых похожих предложений
+    top_indices = similarity.argsort()[::-1][:top_n]
+
+    # return [(candidates[i], similarity[i]) for i in top_indices]
+    return [candidates[i] for i in top_indices]
 
 def get_week_and_day(today: Union[None, datetime] = None) -> tuple[int, str]:
     """
@@ -186,7 +198,7 @@ def parse_literature() -> None:
                     literature[collection_title]["items"][-1]["authors"] = []
                     for author in authors:
                         literature[collection_title]["items"][-1]["authors"] \
-                            .append(author.text)
+                            .append(author.text.split(',', ''))
                     publishing_date = row.find("span", class_="date").text
                     literature[collection_title]["items"][-1]["publishing_date"] = \
                         publishing_date
