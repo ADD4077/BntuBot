@@ -9,7 +9,7 @@ from aiogram.utils.markdown import hlink
 from aiogram.types import ChosenInlineResult, InlineQuery, \
                           InlineQueryResultArticle, InputTextMessageContent
 from aiogram.fsm.context import FSMContext
-from aiogram import Bot, Dispatcher, types, flags
+from aiogram import Bot, Dispatcher, types, flags, filters
 from aiogram.filters.command import Command
 from aiogram import F
 from aiogram.utils.keyboard import InlineKeyboardMarkup
@@ -27,7 +27,7 @@ from func import get_week_and_day, \
 
 import func
 from literature_searching import search_literature
-from middleware import AuthorizationMiddleware
+import middleware
 
 from dotenv import load_dotenv
 
@@ -325,12 +325,12 @@ async def accept_auth_2(message: types.Message, state: FSMContext):
 async def anonymous_chat(callback: types.CallbackQuery):
     b_search = types.InlineKeyboardButton(
         text="🔎 Начать поиск",
-        callback_data=f"search_anonymous_chat"
+        callback_data="search_anonymous_chat"
     )
     row_search = [b_search]
     b_rules = types.InlineKeyboardButton(
         text="Правила чата",
-        url=f"https://telegra.ph/Pravila-Anonimnogo-CHata-09-14"
+        url="https://telegra.ph/Pravila-Anonimnogo-CHata-09-14"
     )
     row_rules = [b_rules]
     rows = [row_search, row_rules]
@@ -343,6 +343,7 @@ async def anonymous_chat(callback: types.CallbackQuery):
 
 
 @dp.callback_query(F.data == "search_anonymous_chat")
+@flags.banned(isnt_banned=True)
 @flags.authorization(is_authorized=True)
 async def search_anonymous_chat(callback: types.CallbackQuery):
     user2_id = callback.from_user.id
@@ -381,6 +382,85 @@ async def search_anonymous_chat(callback: types.CallbackQuery):
         await db.commit()
 
 
+@dp.message(Command("report"))
+@flags.authorization(is_authorized=True)
+async def report(callback: types.CallbackQuery):
+    if message := callback.reply_to_message:
+        message_id = message.message_id
+        user_id = message.from_user.id
+        if user_id == callback.from_user.id:
+            return callback.answer("Вы не можете пожаловаться на себя")
+        async with aiosqlite.connect("server.db") as db:
+            async with db.cursor() as cursor:
+                if data := await (await cursor.execute(
+                    "SELECT user_id, chat_id FROM messages WHERE bot_message_id = (?)",
+                    (message_id, )
+                )).fetchone():
+                    reported_user_id, anon_chat_id = data
+                    b_ban_user = types.InlineKeyboardButton(
+                        text="Забанить нарушителя",
+                        callback_data=f"ban_user {reported_user_id}"
+                    )
+                    b_ban_sender = types.InlineKeyboardButton(
+                        text="Забанить отправителя",
+                        callback_data=f"ban_user {callback.from_user.id}"
+                    )
+                    row_bans = [b_ban_user, b_ban_sender]
+                    rows = [row_bans]
+                    markup = InlineKeyboardMarkup(inline_keyboard=rows)
+                    await bot.send_message(
+                        id_admin,
+                        (
+                            f"Жалоба на пользователя ID: {reported_user_id}\n"
+                            f"От пользователя: {callback.from_user.username}"
+                        ),
+                        reply_markup=markup
+                    )
+                    await func.send_message(
+                        bot,
+                        id_admin,
+                        message,
+                        anon_chat_id
+                    )
+                    return callback.answer("Жалоба отправлена")
+                return callback.answer("Нужно отвечать на сообщение из диалога")
+    return callback.answer("Вы должны ответить на сообщение с нарушением этой коммандой")
+
+
+@dp.callback_query(F.data.contains("ban_user"))
+@flags.authorization(is_authorized=True)
+async def ban_user(callback: types.CallbackQuery):
+    user_id = int(callback.data.split(" ")[1])
+    async with aiosqlite.connect("server.db") as db:
+        async with db.cursor() as cursor:
+            await cursor.execute(
+                "INSERT INTO bans_anon_chat (user_id) VALUES (?)",
+                (user_id, )
+            )
+            await db.commit()
+    return callback.answer(
+        f"Пользователь ID: {user_id} забанен",
+        show_alert=True
+    )
+
+
+@dp.message(Command("unban_user"))
+@flags.admin(is_admin=True)
+@flags.authorization(is_authorized=True)
+async def unban_user(callback: types.CallbackQuery, command: filters.Command):
+    if not command.args:
+        return callback.answer("Пожалуйста укажите ID пользователя")
+    user_id = int(command.args)
+    async with aiosqlite.connect("server.db") as db:
+        async with db.cursor() as cursor:
+            await cursor.execute(
+                "DELETE FROM bans_anon_chat WHERE user_id = (?)",
+                (user_id, )
+            )
+            await db.commit()
+    return callback.answer("Пользователь разблокирован")
+
+
 @dp.message(Command("leave_chat"))
 @flags.authorization(is_authorized=True)
 async def leave_chat(callback: types.CallbackQuery):
@@ -408,10 +488,6 @@ async def leave_chat(callback: types.CallbackQuery):
                 await cursor.execute(
                     "DELETE FROM chats WHERE user1_id = (?) OR user2_id = (?)",
                     (user_id, user_id)
-                )
-                await cursor.execute(
-                    "DELETE FROM messages WHERE chat_id = (?)",
-                    (user_ids[-1], )
                 )
         await db.commit()
 
@@ -444,10 +520,10 @@ async def on_message(message: types.message.Message):
                     )
                 await cursor.execute(
                     """INSERT INTO messages
-                    (chat_id, user_message_id, bot_message_id)
-                    VALUES (?, ?, ?)
+                    (chat_id, user_id, user_message_id, bot_message_id)
+                    VALUES (?, ?, ?, ?)
                     """,
-                    (chat_id, message.message_id, sent_message.message_id)
+                    (chat_id, user_id, message.message_id, sent_message.message_id)
                 )
                 await db.commit()
 
@@ -691,15 +767,26 @@ async def main():
             await cursor.execute("""CREATE TABLE IF NOT EXISTS messages(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 chat_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
                 user_message_id INTEGER NOT NULL,
                 bot_message_id INTEGER NOT NULL,
                 FOREIGN KEY (chat_id) REFERENCES chats(id)
+            )""")
+            await cursor.execute("""CREATE TABLE IF NOT EXISTS bans_anon_chat(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id)
             )""")
 
         await db.commit()
     me = await bot.get_me()
     print(f'@{me.username} ({me.first_name})')
-    dp.message.middleware(AuthorizationMiddleware())
+    dp.message.middleware(middleware.AuthorizationMiddleware())
+    dp.callback_query.middleware(middleware.AuthorizationMiddleware())
+    dp.message.middleware(middleware.BanMiddleware())
+    dp.callback_query.middleware(middleware.BanMiddleware())
+    dp.message.middleware(middleware.AdminMiddleware())
+    dp.callback_query.middleware(middleware.AdminMiddleware())
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
