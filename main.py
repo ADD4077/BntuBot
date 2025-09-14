@@ -81,7 +81,8 @@ async def inline_handler(inline_query: InlineQuery):
                 message_text=message_text,
                 parse_mode="HTML"
             ),
-            description=description
+            description=description,
+            thumbnail_url=book["image_url"]
         ))
     await bot.answer_inline_query(inline_query.id, results)
 
