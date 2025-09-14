@@ -5,10 +5,6 @@ from aiogram import types
 
 from datetime import datetime, timedelta
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
-
 from typing import Union
 import aiosqlite
 import requests
@@ -21,18 +17,6 @@ with open("./literature_per_faculty.json", "r") as jsonfile:
 
 requests.packages.urllib3.disable_warnings()
 
-def search_similar_phrases(query: str, candidates, top_n=3):
-    vectorizer = TfidfVectorizer()
-    candidate_vectors = vectorizer.fit_transform(candidates)
-    # Векторизуем запрос в ту же пространственный базу
-    query_vec = vectorizer.transform([query])
-    # Считаем косинусное сходство запроса с каждым предложением
-    similarity = cosine_similarity(query_vec, candidate_vectors).flatten()
-    # Получаем топ N индексов самых похожих предложений
-    top_indices = similarity.argsort()[::-1][:top_n]
-
-    # return [(candidates[i], similarity[i]) for i in top_indices]
-    return [candidates[i] for i in top_indices]
 
 def get_week_and_day(today: Union[None, datetime] = None) -> tuple[int, str]:
     """
