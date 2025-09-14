@@ -154,8 +154,8 @@ def parse_literature() -> None:
     """
     Parses literature and saves it in ./books/ directory
     """
+    literature = {}
     for faculty, endpoint in literature_per_faculty.items():
-        literature = {}
         response = requests.get(endpoint)
         soup = bs4.BeautifulSoup(response.content, "html.parser")
         collections = soup.find_all("h4", class_="artifact-title")
@@ -198,7 +198,7 @@ def parse_literature() -> None:
                     literature[collection_title]["items"][-1]["authors"] = []
                     for author in authors:
                         literature[collection_title]["items"][-1]["authors"] \
-                            .append(author.text.split(',', ''))
+                            .append(author.text.replace(",", ""))
                     publishing_date = row.find("span", class_="date").text
                     literature[collection_title]["items"][-1]["publishing_date"] = \
                         publishing_date
@@ -223,13 +223,12 @@ def parse_literature() -> None:
                     literature[collection_title]["items"][-1]["download"]["type"] = filetype
                     literature[collection_title]["items"][-1]["download"]["download_link"] = download_link
 
-        with open(
-            f"./books/literature_{faculty}.json",
-            "w", encoding="utf8"
-        ) as jsonfile:
-            json.dump(literature, jsonfile, indent=4, ensure_ascii=False)
+    with open(
+        "./books/literature.json",
+        "w", encoding="utf8"
+    ) as jsonfile:
+        json.dump(literature, jsonfile, indent=4, ensure_ascii=False)
     return None
-
 
 replacements = {
     'Практ': 'Практ.',

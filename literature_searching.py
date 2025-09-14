@@ -38,9 +38,7 @@ def sort_search(strings: list[str], query: str, limit: int = 10):
     return nlargest(limit, res, key=lambda x: x[0])
 
 
-def search_literature(filename: str, query: str, limit: int = 10):
-    with open(filename, "r", encoding="utf8") as jsonfile:
-        literature = json.load(jsonfile)
+def search_literature(literature: dict, query: str, limit: int = 10):
     strings = []
     for group, books in literature.items():
         for i, book in enumerate(books["items"]):

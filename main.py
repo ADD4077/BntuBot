@@ -54,23 +54,37 @@ with open("passes.json", "r", encoding="utf8") as jsonfile:
     passes = json.load(jsonfile)
 
 
+with open("./books/literature.json", "r", encoding="utf8") as jsonfile:
+    literature = json.load(jsonfile)
+
+
 @dp.inline_query()
 async def inline_handler(inline_query: InlineQuery):
     query = inline_query.query or ""
-    faculty = "af"
-    books = search_literature(f"./books/literature_{faculty}.json", query)
+    books = search_literature(literature, query)
     results = []
     for id, book in enumerate(books):
         link = hlink('Скачать', book['download']['download_link'])
-        if len(book["authors"]) == 1:
-            description = f"{book['publishing_date']} | {book['authors'][0]}"
-        else:
-            description = f"{book['publishing_date']} | {book['authors'][0]} и др."
+        description = book["publishing_date"]
+        message_text = f"{book['publishing_date']} | {book['title']}\n\n{book['description']}\n\n{link}"
+        if book["authors"]:
+            if len(book["authors"]) == 1:
+                description += f" | {book['authors'][0]}"
+                message_text = (
+                    f"{book['publishing_date']} | {book['title']}\n\n"
+                    f"{book['description']}\n\n{book['authors'][0]}\n\n{link}"
+                )
+            else:
+                description += f" | {book['authors'][0]} и др."
+                message_text = (
+                    f"{book['publishing_date']} | {book['title']}\n\n"
+                    f"{book['description']}\n\n{book['authors'][0]} и др.\n\n{link}"
+                )
         results.append(InlineQueryResultArticle(
             id=str(id),
             title=book['title'],
             input_message_content=InputTextMessageContent(
-                message_text=f"{book['publishing_date']} | {book['title']}\n\n{book['description']}\n\n{book['authors'][0]}\n\n{link}",
+                message_text=message_text,
                 parse_mode="HTML"
             ),
             description=description
