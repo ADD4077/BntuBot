@@ -2,7 +2,8 @@ from typing import Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware
 from aiogram.dispatcher.flags import get_flag
-from aiogram.types import TelegramObject
+from aiogram.types import TelegramObject, LabeledPrice
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import aiosqlite
 
@@ -63,9 +64,25 @@ class BanMiddleware(BaseMiddleware):
                             "SELECT user_id FROM bans_anon_chat WHERE user_id = (?)",
                             (event.from_user.id, )
                         )).fetchone():
-                            return await event.answer(
-                                "Доступ к анонимному чату заблокирован для вас",
-                                show_alert=True
+                            builder = InlineKeyboardBuilder()
+                            builder.button(
+                                text="Оплатить 100 XTR",
+                                pay=True
+                            )
+
+                            prices = [LabeledPrice(label="XTR", amount=100)]
+                            return await event.message.answer_invoice(
+                                title="Разблокировка в анонимном чате",
+                                description=(
+                                    "Доступ к анонимному чату был заблокирован для Вас.\n"
+                                    "Вы можете приобрести разблокировку за 100 звезд или "
+                                    "обратиться в поддержку если считаете блокировку ошибочной"
+                                ),
+                                prices=prices,
+                                provider_token="",
+                                payload="unban_payment",
+                                currency="XTR",
+                                reply_markup=builder.as_markup()
                             )
                         else:
                             return await handler(event, data)

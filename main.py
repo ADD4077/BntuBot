@@ -472,6 +472,30 @@ async def unban_user(callback: types.CallbackQuery, command: filters.Command):
     return callback.answer("Пользователь разблокирован")
 
 
+@dp.pre_checkout_query()
+async def on_pre_checkout_query(
+    pre_checkout_query: types.PreCheckoutQuery,
+):
+    await pre_checkout_query.answer(ok=True)
+
+
+@dp.message(F.successful_payment)
+async def on_payment(message: types.Message):
+    if message.successful_payment.invoice_payload == "unban_payment":
+        user_id = message.from_user.id
+        async with aiosqlite.connect("server.db") as db:
+            async with db.cursor() as cursor:
+                await cursor.execute(
+                    "DELETE FROM bans_anon_chat WHERE user_id = (?)",
+                    (user_id, )
+                )
+                await db.commit()
+        return await message.answer(
+            "Поздравляем с успешным приобретением разблокиорвки!",
+            message_effect_id="5104841245755180586"
+        )
+
+
 @dp.message(Command("leave_chat"))
 @flags.authorization(is_authorized=True)
 async def leave_chat(callback: types.CallbackQuery):
