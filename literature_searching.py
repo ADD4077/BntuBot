@@ -35,7 +35,7 @@ def sort_search(strings: list[str], query: str, limit: int = 10):
                 int(string.split("###")[1].split("%%%")[1])
             )
         )
-    return nlargest(10, res, key=lambda x: x[0])
+    return nlargest(limit, res, key=lambda x: x[0])
 
 
 def search_literature(filename: str, query: str, limit: int = 10):
@@ -45,7 +45,7 @@ def search_literature(filename: str, query: str, limit: int = 10):
     for group, books in literature.items():
         for i, book in enumerate(books["items"]):
             strings.append(f"{book['title']} {' '.join(book['authors'])}###{group}%%%{i}")
-    results = sort_search(strings, query)
+    results = sort_search(strings, query, limit)
     search_results = []
     for _, group, i in results:
         search_results.append(literature[group]["items"][i])
