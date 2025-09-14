@@ -30,10 +30,9 @@ def sort_search(strings: list[str], query: str, limit: int = 10):
     for string in strings:
         res.append(
             (
-                weighted_search(query, string),
-                string.split("###")[0],
-                string.split("###")[1].split("!?")[0],
-                int(string.split("###")[1].split("!?")[1])
+                weighted_search(query, string.split("###")[0]),
+                string.split("###")[1].split("%%%")[0],
+                int(string.split("###")[1].split("%%%")[1])
             )
         )
     return nlargest(10, res, key=lambda x: x[0])
@@ -45,9 +44,9 @@ def search_literature(filename: str, query: str, limit: int = 10):
     strings = []
     for group, books in literature.items():
         for i, book in enumerate(books["items"]):
-            strings.append(f"{book['title']}%%%{' '.join(book['authors'])}###{group}!?{i}")
+            strings.append(f"{book['title']} {' '.join(book['authors'])}###{group}%%%{i}")
     results = sort_search(strings, query)
     search_results = []
-    for _, name, group, i in results:
+    for _, group, i in results:
         search_results.append(literature[group]["items"][i])
     return search_results
