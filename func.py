@@ -139,7 +139,7 @@ async def authorize(login: str, password: str) -> Union[bool, tuple[str, str]]:
         info_div = soup.find("div", class_="dashboardInfo")
         for line in info_div.contents:
             if "курс" in line:
-                _, _, faculty, _ = line.split(",")
+                _, _, faculty, *_ = line.split(",")
                 break
         faculty = faculty.replace(" ", "")
         return fullname, faculty
@@ -371,6 +371,8 @@ async def send_message(
     videos = message.video
     files = message.document
     sticker = message.sticker
+    voice = message.voice
+    circle = message.video_note
     builder = MediaGroupBuilder(caption=text)
     if photos:
         builder.add_photo(media=photos[-1].file_id)
@@ -399,6 +401,28 @@ async def send_message(
         return await bot.send_sticker(
             chat_id,
             sticker=sticker.file_id
+        )
+    if voice:
+        if replying:
+            return await bot.send_voice(
+                chat_id,
+                voice=voice.file_id,
+                reply_to_message_id=id_for_reply
+            )
+        return await bot.send_voice(
+            chat_id,
+            voice=voice.file_id
+        )
+    if circle:
+        if replying:
+            return await bot.send_video_note(
+                chat_id,
+                video_note=circle.file_id,
+                reply_to_message_id=id_for_reply
+            )
+        return await bot.send_video_note(
+            chat_id,
+            video_note=circle.file_id
         )
     if text:
         if replying:

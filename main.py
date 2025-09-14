@@ -64,22 +64,16 @@ async def inline_handler(inline_query: InlineQuery):
     books = search_literature(literature, query)
     results = []
     for id, book in enumerate(books):
-        link = hlink('Скачать', book['download']['download_link'])
+        link = hlink('⬇️ Скачать', book['download']['download_link'])
         description = book["publishing_date"]
         message_text = f"{book['publishing_date']} | {book['title']}\n\n{book['description']}\n\n{link}"
         if book["authors"]:
-            if len(book["authors"]) == 1:
-                description += f" | {book['authors'][0]}"
-                message_text = (
-                    f"{book['publishing_date']} | {book['title']}\n\n"
-                    f"{book['description']}\n\n{book['authors'][0]}\n\n{link}"
-                )
-            else:
-                description += f" | {book['authors'][0]} и др."
-                message_text = (
-                    f"{book['publishing_date']} | {book['title']}\n\n"
-                    f"{book['description']}\n\n{book['authors'][0]} и др.\n\n{link}"
-                )
+            with_authors = ' и др.' if len(book["authors"]) != 1 else ''
+            description += f" | {book['authors'][0]}{with_authors}"
+            message_text = (
+                f"<b>{book['publishing_date']} | {book['title']}</b>\n\n"
+                f"<b>ℹ️ Описание:</b>\n{book['description']}\n\n<b>©️ Авторы:</b>\n{book['authors'][0]}{with_authors}\n\n{link}"
+            )
         results.append(InlineQueryResultArticle(
             id=str(id),
             title=book['title'],
@@ -104,21 +98,24 @@ async def start(message: types.Message):
         text="📅 Расписание",
         callback_data="schedule"
     )
-    b_pass = types.InlineKeyboardButton(
-        text="📌 Зачёты",
-        callback_data="passes"
+    b_litter = types.InlineKeyboardButton(
+        text="📜 Литература",
+        switch_inline_query_current_chat=''
     )
-    row_lessons = [b_schedule, b_pass]
-    # b_litter = types.InlineKeyboardButton(
-    #     text="📜 Литература",
-    #     callback_data="litterature"
+    # b_pass = types.InlineKeyboardButton(
+    #     text="📌 Зачёты",
+    #     callback_data="passes"
     # )
-    # row_lit = [b_litter]
+    row_lessons = [b_schedule, b_litter]
     b_map = types.InlineKeyboardButton(
         text="🗺️ Карта",
         callback_data="map"
     )
-    row_map = [b_map]
+    b_chat = types.InlineKeyboardButton(
+        text="🕵🏻‍♂️ Анонимный чат",
+        callback_data="anonymous_chat"
+    )
+    row_map = [b_map, b_chat]
     b_tgk = types.InlineKeyboardButton(
         text="📎 Наш Канал",
         url="https://t.me/BNTUnity"
@@ -133,12 +130,7 @@ async def start(message: types.Message):
         callback_data="help"
     )
     row_help = [b_help]
-    b_chat = types.InlineKeyboardButton(
-        text="Анонимный чат",
-        callback_data="anonymous_chat"
-    )
-    row_chat = [b_chat]
-    rows = [row_lessons, row_map, row_url, row_help, row_chat]
+    rows = [row_lessons, row_map, row_url, row_help]
     main_menu_markup = InlineKeyboardMarkup(inline_keyboard=rows)
     await message.answer_photo(
             photo=main_menu_image,
@@ -154,21 +146,24 @@ async def main_menu(callback: types.CallbackQuery):
         text="📅 Расписание",
         callback_data="schedule"
     )
-    b_pass = types.InlineKeyboardButton(
-        text="📌 Зачёты",
-        callback_data="passes"
+    b_litter = types.InlineKeyboardButton(
+        text="📜 Литература",
+        switch_inline_query_current_chat=''
     )
-    row_lessons = [b_schedule, b_pass]
-    # b_litter = types.InlineKeyboardButton(
-    #     text="📜 Литература",
-    #     callback_data="litterature"
+    # b_pass = types.InlineKeyboardButton(
+    #     text="📌 Зачёты",
+    #     callback_data="passes"
     # )
-    # row_lit = [b_litter]
+    row_lessons = [b_schedule, b_litter]
     b_map = types.InlineKeyboardButton(
         text="🗺️ Карта",
         callback_data="map"
     )
-    row_map = [b_map]
+    b_chat = types.InlineKeyboardButton(
+        text="🕵🏻‍♂️ Анонимный чат",
+        callback_data="anonymous_chat"
+    )
+    row_map = [b_map, b_chat]
     b_tgk = types.InlineKeyboardButton(
         text="📎 Наш Канал",
         url="https://t.me/BNTUnity"
@@ -183,12 +178,7 @@ async def main_menu(callback: types.CallbackQuery):
         callback_data="help"
     )
     row_help = [b_help]
-    b_chat = types.InlineKeyboardButton(
-        text="Анонимный чат",
-        callback_data="anonymous_chat"
-    )
-    row_chat = [b_chat]
-    rows = [row_lessons, row_map, row_url, row_help, row_chat]
+    rows = [row_lessons, row_map, row_url, row_help]
     main_menu_markup = InlineKeyboardMarkup(inline_keyboard=rows)
     try:
         await callback.message.edit_caption(
@@ -333,6 +323,28 @@ async def accept_auth_2(message: types.Message, state: FSMContext):
 @dp.callback_query(F.data == "anonymous_chat")
 @flags.authorization(is_authorized=True)
 async def anonymous_chat(callback: types.CallbackQuery):
+    b_search = types.InlineKeyboardButton(
+        text="🔎 Начать поиск",
+        callback_data=f"search_anonymous_chat"
+    )
+    row_search = [b_search]
+    b_rules = types.InlineKeyboardButton(
+        text="Правила чата",
+        url=f"https://telegra.ph/Pravila-Anonimnogo-CHata-09-14"
+    )
+    row_rules = [b_rules]
+    rows = [row_search, row_rules]
+    markup = InlineKeyboardMarkup(inline_keyboard=rows)
+    await callback.message.delete()
+    await callback.message.answer(
+        f"🕵🏻‍♂️ Добро пожаловать в анонимный чат БНТУ. Здесь Вы можете найти себе собеседника для того, чтобы скоротать время на скучной паре или просто повеселиться общаясь с другими студентами своего университета. Также не будет лишним найти новые знакомства.\n\n⚠️ Перед тем, как начаьб пользоваться анонимным чатом, обязательно прочитай правила.\n\n💚 Приятного время провождения!",
+        reply_markup=markup
+    )
+
+
+@dp.callback_query(F.data == "search_anonymous_chat")
+@flags.authorization(is_authorized=True)
+async def search_anonymous_chat(callback: types.CallbackQuery):
     user2_id = callback.from_user.id
     async with aiosqlite.connect("server.db") as db:
         async with db.cursor() as cursor:
@@ -340,9 +352,8 @@ async def anonymous_chat(callback: types.CallbackQuery):
                 "SELECT user1_id, user2_id FROM chats WHERE user1_id = (?) OR user2_id = (?)",
                 (user2_id, user2_id)
             )).fetchone():
-                return await bot.send_message(
-                    user2_id,
-                    "Вы уже в анонимном чате."
+                return await callback.message.edit_text(
+                    "❗️ Вы уже в анонимном чате."
                 )
             if user1_id := (await (await cursor.execute(
                 "SELECT user1_id FROM chats WHERE user2_id IS NULL"
@@ -352,25 +363,22 @@ async def anonymous_chat(callback: types.CallbackQuery):
                     "UPDATE chats SET user2_id=(?) WHERE user1_id=(?)",
                     (user2_id, user1_id)
                 )
-                await bot.send_message(
-                    user2_id,
-                    "Собеседник найден."
+                await callback.message.edit_text(
+                    "👥 Собеседник найден."
                 )
                 await bot.send_message(
                     user1_id,
-                    "Собеседник найден."
+                    "👥 Собеседник найден."
                 )
             else:
                 await cursor.execute(
                     "INSERT INTO chats (user1_id, user2_id) VALUES (?, ?)",
                     (user2_id, None)
                 )
-                await bot.send_message(
-                    user2_id,
-                    "Идет поиск собеседника."
+                await callback.message.edit_text(
+                    "🔎 Идет поиск собеседника."
                 )
         await db.commit()
-    return await callback.answer()
 
 
 @dp.message(Command("leave_chat"))
@@ -383,9 +391,20 @@ async def leave_chat(callback: types.CallbackQuery):
                 "SELECT user1_id, user2_id, id FROM chats WHERE user1_id = (?) OR user2_id = (?)",
                 (user_id, user_id)
             )).fetchone():
+                b_search = types.InlineKeyboardButton(
+                    text="🔎 Начать поиск",
+                    callback_data=f"search_anonymous_chat"
+                )
+                row_search = [b_search]
+                rows = [row_search]
+                markup = InlineKeyboardMarkup(inline_keyboard=rows)
                 for i in range(2):
                     if user_ids[i]:
-                        await bot.send_message(user_ids[i], "Диалог окончен.")
+                        await bot.send_message(
+                            user_ids[i], 
+                            "⛔️ Диалог окончен.",
+                            reply_markup=markup
+                        )
                 await cursor.execute(
                     "DELETE FROM chats WHERE user1_id = (?) OR user2_id = (?)",
                     (user_id, user_id)
