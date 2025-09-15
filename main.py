@@ -13,7 +13,7 @@ from aiogram import Bot, Dispatcher, types, flags, filters
 from aiogram.filters.command import Command
 from aiogram import F
 from aiogram.utils.keyboard import InlineKeyboardMarkup
-
+from StateStorge import SQLiteStorage
 
 # star imports are bad due to overshadowing and currently
 # removed using this
@@ -42,9 +42,8 @@ user_admin = os.getenv('USER_ADMIN')
 id_admin = os.getenv('ID_ADMIN')
 
 bot = Bot(token=API_TOKEN)
-dp = Dispatcher()
+dp = Dispatcher(storage=SQLiteStorage())
 tz = pytz.timezone("Europe/Moscow")
-
 # with open('schedule.json', 'r', encoding="utf8") as json_file:
 #     schedule_base = json.load(json_file)
 
@@ -356,7 +355,7 @@ async def anonymous_chat(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "search_anonymous_chat")
 @flags.banned(isnt_banned=True)
 @flags.authorization(is_authorized=True)
-async def search_anonymous_chat(callback: types.CallbackQuery):
+async def search_anonymous_chat(callback: types.CallbackQuery, state: FSMContext):
     user2_id = callback.from_user.id
     async with aiosqlite.connect("server.db") as db:
         async with db.cursor() as cursor:
@@ -390,6 +389,7 @@ async def search_anonymous_chat(callback: types.CallbackQuery):
                 await callback.message.edit_text(
                     "🔎 Идет поиск собеседника."
                 )
+        await state.set_state(func.AnonChatState.in_chat)
         await db.commit()
 
 
@@ -498,7 +498,7 @@ async def on_payment(message: types.Message):
 
 @dp.message(Command("leave_chat"))
 @flags.authorization(is_authorized=True)
-async def leave_chat(callback: types.CallbackQuery):
+async def leave_chat(callback: types.CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
     async with aiosqlite.connect("server.db") as db:
         async with db.cursor() as cursor:
@@ -524,10 +524,12 @@ async def leave_chat(callback: types.CallbackQuery):
                     "DELETE FROM chats WHERE user1_id = (?) OR user2_id = (?)",
                     (user_id, user_id)
                 )
+        await state.clear()
         await db.commit()
 
 
-@dp.message()
+@dp.message(func.AnonChatState.in_chat)
+@flags.banned(isnt_banned=True)
 async def on_message(message: types.message.Message):
     user_id = message.from_user.id
     async with aiosqlite.connect("server.db") as db:

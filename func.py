@@ -66,9 +66,15 @@ class AcceptAuthForm(StatesGroup):
     id = State()
     text = State()
 
+
 class AutoAuth(StatesGroup):
     student_code = State()
     code = State()
+
+
+class AnonChatState(StatesGroup):
+    in_chat = State()
+
 
 async def auth_send(bot, message):
     b_auth = types.InlineKeyboardButton(

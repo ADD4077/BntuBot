@@ -2,7 +2,7 @@ from typing import Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware
 from aiogram.dispatcher.flags import get_flag
-from aiogram.types import TelegramObject, LabeledPrice
+from aiogram.types import TelegramObject, LabeledPrice, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import aiosqlite
@@ -71,7 +71,11 @@ class BanMiddleware(BaseMiddleware):
                             )
 
                             prices = [LabeledPrice(label="XTR", amount=100)]
-                            return await event.message.answer_invoice(
+                            if isinstance(event, Message):
+                                message = event
+                            else:
+                                message = event.message
+                            return await message.answer_invoice(
                                 title="Разблокировка в анонимном чате",
                                 description=(
                                     "Доступ к анонимному чату был заблокирован для Вас.\n"
