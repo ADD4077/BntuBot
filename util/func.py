@@ -5,14 +5,14 @@ from aiogram import types
 from datetime import datetime, timedelta
 
 from typing import Union
-from util.config import server_db_path
+from util.config import server_db_path, literature_per_faculty_json_path
 import aiosqlite
 import requests
 import json
 import bs4
 import re
 
-with open("./literature_per_faculty.json", "r") as jsonfile:
+with open(literature_per_faculty_json_path, "r") as jsonfile:
     literature_per_faculty = json.load(jsonfile)
 
 requests.packages.urllib3.disable_warnings()
