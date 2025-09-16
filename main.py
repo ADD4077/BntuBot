@@ -526,6 +526,8 @@ async def leave_chat(callback: types.CallbackQuery, state: FSMContext):
 @dp.message(AnonChatState.in_chat)
 @flags.banned(isnt_banned=True)
 async def on_message(message: types.message.Message):
+    if message.via_bot:
+        return
     user_id = message.from_user.id
     async with aiosqlite.connect(server_db_path) as db:
         async with db.cursor() as cursor:
