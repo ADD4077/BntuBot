@@ -13,22 +13,17 @@ from aiogram import Bot, Dispatcher, types, flags, filters
 from aiogram.filters.command import Command
 from aiogram import F
 from aiogram.utils.keyboard import InlineKeyboardMarkup
-from StateStorge import SQLiteStorage
+from util.StateStorge import SQLiteStorage
 
-# star imports are bad due to overshadowing and currently
-# removed using this
-from func import get_week_and_day, \
-                 get_tomorrow_week_and_day, \
-                 authorize, \
-                 Form, \
-                 AcceptAuthForm, \
-                 AutoAuth
+from util import func
+from util.literature_searching import search_literature
+from util import middleware
 
-import func
-from literature_searching import search_literature
-import middleware
+from util.states import AutoAuth, AcceptAuthForm, AnonChatState, Form
 
 from dotenv import load_dotenv
+
+from util.config import server_db_path
 
 load_dotenv()
 
@@ -39,7 +34,7 @@ example_photo = os.getenv('EXAMPLE_IMAGE')
 map_photo = os.getenv('MAP_IMAGE')
 
 user_admin = os.getenv('USER_ADMIN')
-id_admin = os.getenv('ID_ADMIN')
+id_admin = int(os.getenv('ID_ADMIN'))
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(storage=SQLiteStorage())
@@ -219,7 +214,7 @@ async def auto_auth_end(message: types.Message, state: FSMContext):
     student_code = data.get("student_code")
     await state.clear()
     code = message.text
-    auth_status = await authorize(student_code, code)
+    auth_status = await func.authorize(student_code, code)
     if auth_status == -1:
         b_auth = types.InlineKeyboardButton(
             text="🔐 Вручную",
@@ -235,7 +230,7 @@ async def auto_auth_end(message: types.Message, state: FSMContext):
             "❌ Студент с такими данными не найден в системе БНТУ. Вы можете повторить попытку, написав /start.",
         )
     else:
-        async with aiosqlite.connect("server.db") as db:
+        async with aiosqlite.connect(server_db_path) as db:
             async with db.cursor() as cursor:
                 code = hashlib.sha256(code.encode()).hexdigest()
                 await cursor.execute(
@@ -306,7 +301,7 @@ async def accept_auth_2(message: types.Message, state: FSMContext):
     student_code = message.text.split(',')[2]
     bilet_code = message.text.split(',')[3]
     code = hashlib.sha256(bilet_code.encode()).hexdigest()
-    async with aiosqlite.connect("server.db") as db:
+    async with aiosqlite.connect(server_db_path) as db:
         async with db.cursor() as cursor:
             await cursor.execute(
                 "INSERT INTO users VALUES (?, ?, ?, ?, ?)",
@@ -357,7 +352,7 @@ async def anonymous_chat(callback: types.CallbackQuery):
 @flags.authorization(is_authorized=True)
 async def search_anonymous_chat(callback: types.CallbackQuery, state: FSMContext):
     user2_id = callback.from_user.id
-    async with aiosqlite.connect("server.db") as db:
+    async with aiosqlite.connect(server_db_path) as db:
         async with db.cursor() as cursor:
             if await (await cursor.execute(
                 "SELECT user1_id, user2_id FROM chats WHERE user1_id = (?) OR user2_id = (?)",
@@ -389,7 +384,7 @@ async def search_anonymous_chat(callback: types.CallbackQuery, state: FSMContext
                 await callback.message.edit_text(
                     "🔎 Идет поиск собеседника."
                 )
-        await state.set_state(func.AnonChatState.in_chat)
+        await state.set_state(AnonChatState.in_chat)
         await db.commit()
 
 
@@ -401,7 +396,7 @@ async def report(callback: types.CallbackQuery):
         user_id = message.from_user.id
         if user_id == callback.from_user.id:
             return callback.answer("Вы не можете пожаловаться на себя")
-        async with aiosqlite.connect("server.db") as db:
+        async with aiosqlite.connect(server_db_path) as db:
             async with db.cursor() as cursor:
                 if data := await (await cursor.execute(
                     "SELECT user_id, chat_id FROM messages WHERE bot_message_id = (?)",
@@ -442,7 +437,7 @@ async def report(callback: types.CallbackQuery):
 @flags.authorization(is_authorized=True)
 async def ban_user(callback: types.CallbackQuery):
     user_id = int(callback.data.split(" ")[1])
-    async with aiosqlite.connect("server.db") as db:
+    async with aiosqlite.connect(server_db_path) as db:
         async with db.cursor() as cursor:
             await cursor.execute(
                 "INSERT INTO bans_anon_chat (user_id) VALUES (?)",
@@ -462,7 +457,7 @@ async def unban_user(callback: types.CallbackQuery, command: filters.Command):
     if not command.args:
         return callback.answer("Пожалуйста укажите ID пользователя")
     user_id = int(command.args)
-    async with aiosqlite.connect("server.db") as db:
+    async with aiosqlite.connect(server_db_path) as db:
         async with db.cursor() as cursor:
             await cursor.execute(
                 "DELETE FROM bans_anon_chat WHERE user_id = (?)",
@@ -483,7 +478,7 @@ async def on_pre_checkout_query(
 async def on_payment(message: types.Message):
     if message.successful_payment.invoice_payload == "unban_payment":
         user_id = message.from_user.id
-        async with aiosqlite.connect("server.db") as db:
+        async with aiosqlite.connect(server_db_path) as db:
             async with db.cursor() as cursor:
                 await cursor.execute(
                     "DELETE FROM bans_anon_chat WHERE user_id = (?)",
@@ -500,7 +495,7 @@ async def on_payment(message: types.Message):
 @flags.authorization(is_authorized=True)
 async def leave_chat(callback: types.CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
-    async with aiosqlite.connect("server.db") as db:
+    async with aiosqlite.connect(server_db_path) as db:
         async with db.cursor() as cursor:
             if user_ids := await (await cursor.execute(
                 "SELECT user1_id, user2_id, id FROM chats WHERE user1_id = (?) OR user2_id = (?)",
@@ -524,15 +519,15 @@ async def leave_chat(callback: types.CallbackQuery, state: FSMContext):
                     "DELETE FROM chats WHERE user1_id = (?) OR user2_id = (?)",
                     (user_id, user_id)
                 )
-        await state.clear()
+                await state.clear()
         await db.commit()
 
 
-@dp.message(func.AnonChatState.in_chat)
+@dp.message(AnonChatState.in_chat)
 @flags.banned(isnt_banned=True)
 async def on_message(message: types.message.Message):
     user_id = message.from_user.id
-    async with aiosqlite.connect("server.db") as db:
+    async with aiosqlite.connect(server_db_path) as db:
         async with db.cursor() as cursor:
             if user_ids := await (await cursor.execute(
                 "SELECT user1_id, user2_id, id FROM chats WHERE user1_id = (?) OR user2_id = (?)",
@@ -664,7 +659,7 @@ async def schedule(callback: types.CallbackQuery):
 @dp.callback_query(F.data.split()[0] == "send_schedule")
 @flags.authorization(is_authorized=True)
 async def schedule(callback: types.CallbackQuery):
-    async with aiosqlite.connect("server.db") as db:
+    async with aiosqlite.connect(server_db_path) as db:
         async with db.cursor() as cursor:
             student_code = (await (await cursor.execute(
                 "SELECT student_code FROM users WHERE id = (?)",
@@ -674,7 +669,7 @@ async def schedule(callback: types.CallbackQuery):
     with open(f"schedules/schedule_{group}.json", "r", encoding='utf8') as jsonfile:
         schedule_base = json.load(jsonfile)['Schedule']
     if callback.data.split()[1] == 'week':
-        date = get_week_and_day()
+        date = func.get_week_and_day()
         week, day = date
         back = types.InlineKeyboardButton(
             text="⬅️ Назад",
@@ -694,7 +689,7 @@ async def schedule(callback: types.CallbackQuery):
             reply_markup=markup, parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'next_week':
-        date = get_week_and_day()
+        date = func.get_week_and_day()
         week, day = date
         reversing_list = [1, 0]
         week = reversing_list[week]
@@ -716,7 +711,7 @@ async def schedule(callback: types.CallbackQuery):
             reply_markup=markup, parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'together':
-        date = get_week_and_day()
+        date = func.get_week_and_day()
         week, day = date
         back = types.InlineKeyboardButton(
             text="⬅️ Назад",
@@ -737,7 +732,7 @@ async def schedule(callback: types.CallbackQuery):
             reply_markup=markup, parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'tomorrow':
-        date = get_tomorrow_week_and_day()
+        date = func.get_tomorrow_week_and_day()
         week, day = date
         back = types.InlineKeyboardButton(
             text="⬅️ Назад",
@@ -787,7 +782,7 @@ async def help(callback: types.CallbackQuery):
 
 
 async def main():
-    async with aiosqlite.connect('server.db') as db:
+    async with aiosqlite.connect(server_db_path) as db:
         async with db.cursor() as cursor:
             await cursor.execute("""CREATE TABLE IF NOT EXISTS users(
                 id INT PRIMARY KEY,

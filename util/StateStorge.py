@@ -3,10 +3,15 @@ import aiosqlite
 from typing import Dict, Optional, Any
 from aiogram.fsm.storage.base import BaseStorage, StorageKey
 from aiogram.fsm.state import State
+from util.config import states_db_path
 
 
 class SQLiteStorage(BaseStorage):
-    def __init__(self, db_path: str = "states.db", table_name: str = "states"):
+    def __init__(
+            self,
+            db_path: str = states_db_path,
+            table_name: str = "states"
+    ):
         self.db_path = db_path
         self.table_name = table_name
         self.connection = None

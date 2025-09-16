@@ -7,15 +7,18 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import aiosqlite
 
-from func import auth_send
+from util.func import auth_send
 
 import os
+
+from util.config import server_db_path
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
 id_admin = os.getenv('ID_ADMIN')
+
 
 class AuthorizationMiddleware(BaseMiddleware):
     """
@@ -31,7 +34,7 @@ class AuthorizationMiddleware(BaseMiddleware):
         authorization = get_flag(data, "authorization")
         if authorization:
             if authorization["is_authorized"]:
-                async with aiosqlite.connect("server.db") as db:
+                async with aiosqlite.connect(server_db_path) as db:
                     async with db.cursor() as cursor:
                         if await (await cursor.execute(
                             "SELECT id FROM users WHERE id = (?)",
@@ -58,7 +61,7 @@ class BanMiddleware(BaseMiddleware):
         banned = get_flag(data, "banned")
         if banned:
             if banned["isnt_banned"]:
-                async with aiosqlite.connect("server.db") as db:
+                async with aiosqlite.connect(server_db_path) as db:
                     async with db.cursor() as cursor:
                         if await (await cursor.execute(
                             "SELECT user_id FROM bans_anon_chat WHERE user_id = (?)",
@@ -108,8 +111,9 @@ class AdminMiddleware(BaseMiddleware):
         admin = get_flag(data, "admin")
         if admin:
             if admin["is_admin"]:
-                async with aiosqlite.connect("server.db") as db:
+                async with aiosqlite.connect(server_db_path) as db:
                     async with db.cursor() as cursor:
+                        # fetch admins from db in future
                         if event.from_user.id != int(id_admin):
                             return await event.answer(
                                 "Нет доступа",
