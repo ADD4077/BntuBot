@@ -503,7 +503,7 @@ async def leave_chat(callback: types.CallbackQuery, state: FSMContext):
             )).fetchone():
                 b_search = types.InlineKeyboardButton(
                     text="🔎 Начать поиск",
-                    callback_data=f"search_anonymous_chat"
+                    callback_data="search_anonymous_chat"
                 )
                 row_search = [b_search]
                 rows = [row_search]
@@ -511,7 +511,7 @@ async def leave_chat(callback: types.CallbackQuery, state: FSMContext):
                 for i in range(2):
                     if user_ids[i]:
                         await bot.send_message(
-                            user_ids[i], 
+                            user_ids[i],
                             "⛔️ Диалог окончен.",
                             reply_markup=markup
                         )
