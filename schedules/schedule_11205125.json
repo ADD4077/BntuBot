@@ -43,6 +43,13 @@
                     "Teacher": "",
                     "Frame": "11",
                     "Classroom": "311"
+                },
+                {
+                    "Time": "15:40",
+                    "Matter": "ОИЗ Физика",
+                    "Teacher": "",
+                    "Frame": "11",
+                    "Classroom": "311"
                 }
             ],
             "Вторник": [
@@ -208,6 +215,13 @@
                 {
                     "Time": "13:55",
                     "Matter": "(Практ.) Физика, 1/2 группы ",
+                    "Teacher": "",
+                    "Frame": "11",
+                    "Classroom": "311"
+                },
+                {
+                    "Time": "15:40",
+                    "Matter": "ОИЗ Физика",
                     "Teacher": "",
                     "Frame": "11",
                     "Classroom": "311"

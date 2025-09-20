@@ -3,3 +3,5 @@ pytz==2025.1
 python-dotenv==1.1.1
 aiosqlite==0.21.0
 beautifulsoup4==4.13.3
+python-dotenv==1.1.1
+rapidfuzz==3.14.1

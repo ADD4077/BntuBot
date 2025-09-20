@@ -25,6 +25,8 @@ from dotenv import load_dotenv
 
 from util.config import server_db_path
 
+from keyboards import *
+
 load_dotenv()
 
 API_TOKEN = os.getenv('TOKEN')
@@ -88,97 +90,21 @@ async def chosen_inline_handler(result: ChosenInlineResult):
 @dp.message(Command("start"))
 @flags.authorization(is_authorized=True)
 async def start(message: types.Message):
-    b_schedule = types.InlineKeyboardButton(
-        text="📅 Расписание",
-        callback_data="schedule"
-    )
-    b_litter = types.InlineKeyboardButton(
-        text="📜 Литература",
-        switch_inline_query_current_chat=''
-    )
-    # b_pass = types.InlineKeyboardButton(
-    #     text="📌 Зачёты",
-    #     callback_data="passes"
-    # )
-    row_lessons = [b_schedule, b_litter]
-    b_map = types.InlineKeyboardButton(
-        text="🗺️ Карта",
-        callback_data="map"
-    )
-    b_chat = types.InlineKeyboardButton(
-        text="🕵🏻‍♂️ Анонимный чат",
-        callback_data="anonymous_chat"
-    )
-    row_map = [b_map, b_chat]
-    b_tgk = types.InlineKeyboardButton(
-        text="📎 Наш Канал",
-        url="https://t.me/BNTUnity"
-    )
-    b_site = types.InlineKeyboardButton(
-        text="🌐 Сайт БНТУ",
-        url="https://bntu.by"
-    )
-    row_url = [b_tgk, b_site]
-    b_help = types.InlineKeyboardButton(
-        text="🛠️ Поддержка",
-        callback_data="help"
-    )
-    row_help = [b_help]
-    rows = [row_lessons, row_map, row_url, row_help]
-    main_menu_markup = InlineKeyboardMarkup(inline_keyboard=rows)
     await message.answer_photo(
             photo=main_menu_image,
             caption=f"💚 Рады вас видеть, @{message.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
-            reply_markup=main_menu_markup
+            reply_markup=main_menu_buttons()
         )
 
 
 @dp.callback_query(F.data == "main_menu")
 @flags.authorization(is_authorized=True)
 async def main_menu(callback: types.CallbackQuery):
-    b_schedule = types.InlineKeyboardButton(
-        text="📅 Расписание",
-        callback_data="schedule"
-    )
-    b_litter = types.InlineKeyboardButton(
-        text="📜 Литература",
-        switch_inline_query_current_chat=''
-    )
-    # b_pass = types.InlineKeyboardButton(
-    #     text="📌 Зачёты",
-    #     callback_data="passes"
-    # )
-    row_lessons = [b_schedule, b_litter]
-    b_map = types.InlineKeyboardButton(
-        text="🗺️ Карта",
-        callback_data="map"
-    )
-    b_chat = types.InlineKeyboardButton(
-        text="🕵🏻‍♂️ Анонимный чат",
-        callback_data="anonymous_chat"
-    )
-    row_map = [b_map, b_chat]
-    b_tgk = types.InlineKeyboardButton(
-        text="📎 Наш Канал",
-        url="https://t.me/BNTUnity"
-    )
-    b_site = types.InlineKeyboardButton(
-        text="🌐 Сайт БНТУ",
-        url="https://bntu.by"
-    )
-    row_url = [b_tgk, b_site]
-    b_help = types.InlineKeyboardButton(
-        text="🛠️ Поддержка",
-        callback_data="help"
-    )
-    row_help = [b_help]
-    rows = [row_lessons, row_map, row_url, row_help]
-    main_menu_markup = InlineKeyboardMarkup(inline_keyboard=rows)
     try:
         await callback.message.edit_caption(
             photo=main_menu_image,
             caption=f"💚 Рады вас видеть, @{callback.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
-            reply_markup=main_menu_markup
+            reply_markup=main_menu_buttons()
         )
     # dont use bare except
     except Exception:
@@ -186,7 +112,7 @@ async def main_menu(callback: types.CallbackQuery):
         await callback.message.answer_photo(
                 photo=main_menu_image,
                 caption=f"💚 Рады вас видеть, @{callback.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
-                reply_markup=main_menu_markup
+                reply_markup=main_menu_buttons()
             )
 
 
@@ -220,10 +146,9 @@ async def auto_auth_end(message: types.Message, state: FSMContext):
             text="🔐 Вручную",
             callback_data="support_auth"
         )
-        markup = InlineKeyboardMarkup(inline_keyboard=[[b_auth]])
         await message.answer(
             '⚠️ Ошибка сервера. Система БНТУ не отвечает. Автоматическая авторизация временно недоступна, но Вы можете авторизоваться вручную через фото профиля по кнопке "Вручную".',
-            reply_markup=markup
+            reply_markup=auth_error()
         )
     elif auth_status == 0:
         await message.answer(
@@ -258,24 +183,12 @@ async def auth_begin(callback: types.CallbackQuery, state: FSMContext):
 async def auth_end(message: types.Message, state: FSMContext):
     if not message.photo:
         return await message.answer("Пожалуйста, отправьте именно фото.")
-    b_auth = types.InlineKeyboardButton(
-        text="🔐 Авторизовать",
-        callback_data=f"accept_auth {message.from_user.id}"
-    )
-    row_auth = [b_auth]
-    b_decline = types.InlineKeyboardButton(
-        text="Отклонить",
-        callback_data="decline_auth"
-    )
-    row_decline = [b_decline]
-    rows = [row_auth, row_decline]
-    markup = InlineKeyboardMarkup(inline_keyboard=rows)
     photo = message.photo[-1]
     await bot.send_photo(
         id_admin,
         photo=photo.file_id,
         caption=f"Фото студенческого билета от пользователя @{message.from_user.username} (ID: {message.from_user.id})",
-        reply_markup=markup
+        reply_markup=support_auth(message.from_user.id)
     )
     await message.answer("Фото получено и отправлено на проверку. Ожидайте подтверждения.")
     await state.clear()
@@ -317,18 +230,6 @@ async def accept_auth_2(message: types.Message, state: FSMContext):
 @dp.callback_query(F.data == "anonymous_chat")
 @flags.authorization(is_authorized=True)
 async def anonymous_chat(callback: types.CallbackQuery):
-    b_search = types.InlineKeyboardButton(
-        text="🔎 Начать поиск",
-        callback_data="search_anonymous_chat"
-    )
-    row_search = [b_search]
-    b_rules = types.InlineKeyboardButton(
-        text="Правила чата",
-        url="https://telegra.ph/Pravila-Anonimnogo-CHata-09-14"
-    )
-    row_rules = [b_rules]
-    rows = [row_search, row_rules]
-    markup = InlineKeyboardMarkup(inline_keyboard=rows)
     await callback.message.delete()
     await callback.message.answer(
         text=(
@@ -341,9 +242,10 @@ async def anonymous_chat(callback: types.CallbackQuery):
             "анонимным чатом, обязательно прочитай правила.\n\n"
             "Если вы хотите пожаловаться на нарушение правил, "
             "ответьте на сообщение с нарушением коммандой /report\n\n"
+            "Чтобы выйти из диалога, напишите в чат команду /leave_chat\n\n"
             "💚 Приятного время провождения!"
         ), 
-        reply_markup=markup
+        reply_markup=anonymous_chat_menu()
     )
 
 
@@ -390,12 +292,12 @@ async def search_anonymous_chat(callback: types.CallbackQuery, state: FSMContext
 
 @dp.message(Command("report"))
 @flags.authorization(is_authorized=True)
-async def report(callback: types.CallbackQuery):
-    if message := callback.reply_to_message:
+async def report(message):
+    if message := message.reply_to_message:
         message_id = message.message_id
         user_id = message.from_user.id
-        if user_id == callback.from_user.id:
-            return callback.answer("Вы не можете пожаловаться на себя")
+        if user_id == message.from_user.id:
+            return message.answer("Вы не можете пожаловаться на себя")
         async with aiosqlite.connect(server_db_path) as db:
             async with db.cursor() as cursor:
                 if data := await (await cursor.execute(
@@ -403,24 +305,13 @@ async def report(callback: types.CallbackQuery):
                     (message_id, )
                 )).fetchone():
                     reported_user_id, anon_chat_id = data
-                    b_ban_user = types.InlineKeyboardButton(
-                        text="Забанить нарушителя",
-                        callback_data=f"ban_user {reported_user_id}"
-                    )
-                    b_ban_sender = types.InlineKeyboardButton(
-                        text="Забанить отправителя",
-                        callback_data=f"ban_user {callback.from_user.id}"
-                    )
-                    row_bans = [b_ban_user, b_ban_sender]
-                    rows = [row_bans]
-                    markup = InlineKeyboardMarkup(inline_keyboard=rows)
                     await bot.send_message(
                         id_admin,
                         (
                             f"Жалоба на пользователя ID: {reported_user_id}\n"
-                            f"От пользователя: {callback.from_user.username}"
+                            f"От пользователя: {message.from_user.username}"
                         ),
-                        reply_markup=markup
+                        reply_markup=report_menu(reported_user_id, message.from_user.id)
                     )
                     await func.send_message(
                         bot,
@@ -428,14 +319,26 @@ async def report(callback: types.CallbackQuery):
                         message,
                         anon_chat_id
                     )
-                    return callback.answer("Жалоба отправлена")
-                return callback.answer("Нужно отвечать на сообщение из диалога")
-    return callback.answer("Вы должны ответить на сообщение с нарушением этой коммандой")
+                    return message.answer("Жалоба отправлена")
+                return message.answer("Нужно отвечать на сообщение из диалога")
+    return message.answer("Вы должны ответить на сообщение с нарушением этой коммандой")
+
+@dp.message(Command("admin"))
+@flags.admin(is_admin=True)
+async def admin_panel(message):
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            count = await (await cursor.execute("SELECT COUNT(id) FROM users")).fetchone()[0]
+    await message.answer(
+        f"Пользователей: {count}",
+        reply_markup=admin_panel_menu()
+    )
 
 
 @dp.callback_query(F.data.contains("ban_user"))
+@flags.admin(is_admin=True)
 @flags.authorization(is_authorized=True)
-async def ban_user(callback: types.CallbackQuery):
+async def button_ban_user(callback: types.CallbackQuery):
     user_id = int(callback.data.split(" ")[1])
     async with aiosqlite.connect(server_db_path) as db:
         async with db.cursor() as cursor:
@@ -444,18 +347,35 @@ async def ban_user(callback: types.CallbackQuery):
                 (user_id, )
             )
             await db.commit()
-    return callback.answer(
+    return await callback.answer(
         f"Пользователь ID: {user_id} забанен",
         show_alert=True
     )
 
 
+@dp.message(Command("ban_user"))
+@flags.admin(is_admin=True)
+@flags.authorization(is_authorized=True)
+async def ban_user(message, command: filters.Command):
+    if not command.args:
+        return message.answer("Пожалуйста укажите ID пользователя")
+    user_id = int(command.args)
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            await cursor.execute(
+                "INSERT INTO bans_anon_chat (user_id) VALUES (?)",
+                (user_id, )
+            )
+            await db.commit()
+    return await message.answer("Пользователь блокирован")
+
+
 @dp.message(Command("unban_user"))
 @flags.admin(is_admin=True)
 @flags.authorization(is_authorized=True)
-async def unban_user(callback: types.CallbackQuery, command: filters.Command):
+async def unban_user(message, command: filters.Command):
     if not command.args:
-        return callback.answer("Пожалуйста укажите ID пользователя")
+        return message.answer("Пожалуйста укажите ID пользователя")
     user_id = int(command.args)
     async with aiosqlite.connect(server_db_path) as db:
         async with db.cursor() as cursor:
@@ -464,7 +384,7 @@ async def unban_user(callback: types.CallbackQuery, command: filters.Command):
                 (user_id, )
             )
             await db.commit()
-    return callback.answer("Пользователь разблокирован")
+    return await message.answer("Пользователь разблокирован")
 
 
 @dp.pre_checkout_query()
@@ -501,19 +421,12 @@ async def leave_chat(callback: types.CallbackQuery, state: FSMContext):
                 "SELECT user1_id, user2_id, id FROM chats WHERE user1_id = (?) OR user2_id = (?)",
                 (user_id, user_id)
             )).fetchone():
-                b_search = types.InlineKeyboardButton(
-                    text="🔎 Начать поиск",
-                    callback_data=f"search_anonymous_chat"
-                )
-                row_search = [b_search]
-                rows = [row_search]
-                markup = InlineKeyboardMarkup(inline_keyboard=rows)
                 for i in range(2):
                     if user_ids[i]:
                         await bot.send_message(
                             user_ids[i], 
                             "⛔️ Диалог окончен.",
-                            reply_markup=markup
+                            reply_markup=anonymous_chat_menu()
                         )
                 await cursor.execute(
                     "DELETE FROM chats WHERE user1_id = (?) OR user2_id = (?)",
@@ -565,15 +478,10 @@ async def on_message(message: types.message.Message):
 @dp.callback_query(F.data == "map")
 @flags.authorization(is_authorized=True)
 async def main_menu(callback: types.CallbackQuery):
-    back = types.InlineKeyboardButton(
-        text="Убрать",
-        callback_data="delete"
-    )
-    markup = InlineKeyboardMarkup(inline_keyboard=[[back]])
     await callback.message.answer_photo(
         photo=map_photo,
         caption='🗺️ Карта мини-городка БНТУ',
-        reply_markup=markup
+        reply_markup=map_menu()
     )
     await callback.answer()
 
@@ -581,22 +489,16 @@ async def main_menu(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "passes")
 @flags.authorization(is_authorized=True)
 async def passes_button(callback: types.CallbackQuery):
-    rows = []
+    passes = []
     for i in list(passes):
         b = types.InlineKeyboardButton(
             text=i,
             callback_data=f"get_passes {i}"
         )
-        rows.append([b])
-    back = types.InlineKeyboardButton(
-        text="⬅️ Назад",
-        callback_data="main_menu"
-    )
-    rows.append([back])
-    markup = InlineKeyboardMarkup(inline_keyboard=rows)
+        passes.append(b)
     await callback.message.edit_caption(
         caption='📗 Выберите нужный Вам предмет:',
-        reply_markup=markup
+        reply_markup=passes_menu(passes)
     )
 
 
@@ -604,49 +506,19 @@ async def passes_button(callback: types.CallbackQuery):
 @flags.authorization(is_authorized=True)
 async def pass_button(callback: types.CallbackQuery):
     text = f"{callback.data.split()[1]} | "+passes[callback.data.split()[1]]
-    back = types.InlineKeyboardButton(
-        text="⬅️ Назад",
-        callback_data="passes"
-    )
-    markup = InlineKeyboardMarkup(inline_keyboard=[[back]])
     await callback.message.edit_caption(
         caption=text,
-        reply_markup=markup, parse_mode="HTML"
+        reply_markup=pass_detail_menu(), parse_mode="HTML"
     )
 
 
 @dp.callback_query(F.data == "schedule")
 @flags.authorization(is_authorized=True)
 async def schedule(callback: types.CallbackQuery):
-    b_together = types.InlineKeyboardButton(
-        text="Сегодня",
-        callback_data="send_schedule together"
-    )
-    b_tomorrow = types.InlineKeyboardButton(
-        text="Завтра",
-        callback_data="send_schedule tomorrow"
-    )
-    row_days = [b_together, b_tomorrow]
-    b_next_week = types.InlineKeyboardButton(
-        text="След. неделя",
-        callback_data="send_schedule next_week"
-    )
-    b_this_week = types.InlineKeyboardButton(
-        text="Эта неделя",
-        callback_data="send_schedule week"
-    )
-    row_weeks = [b_this_week, b_next_week]
-    back = types.InlineKeyboardButton(
-        text="⬅️ Назад",
-        callback_data="main_menu"
-    )
-    row_back = [back]
-    rows = [row_days, row_weeks, row_back]
-    markup = InlineKeyboardMarkup(inline_keyboard=rows)
     try:
         await callback.message.edit_caption(
             caption='📚 Выберите нужное Вам расписание занятий:',
-            reply_markup=markup
+            reply_markup=schedule_menu()
             )
     # specify your exceptions
     except Exception:
@@ -654,7 +526,7 @@ async def schedule(callback: types.CallbackQuery):
         await callback.message.answer_photo(
             photo=main_menu_image,
             caption='📚 Выберите нужное Вам расписание занятий:',
-            reply_markup=markup
+            reply_markup=schedule_menu()
         )
 
 
@@ -673,86 +545,58 @@ async def schedule(callback: types.CallbackQuery):
     if callback.data.split()[1] == 'week':
         date = func.get_week_and_day()
         week, day = date
-        back = types.InlineKeyboardButton(
-            text="⬅️ Назад",
-            callback_data="schedule"
-        )
-        row = [back]
-        rows = [row]
-        markup = InlineKeyboardMarkup(inline_keyboard=rows)
         text = ''
         for i in schedule_base[week]:
             text += f"\n{i}:\n"
             for j in schedule_base[week][i]:
-                text += f'<blockquote>{j["Time"]} | {j["Matter"]}\n{j["Frame"]} корп., {j["Classroom"]} аудит.\n{j["Teacher"]}</blockquote>\n'
+                text += f'<blockquote>{j["Time"]} | {j["Matter"]}\n{j["Frame"]} корп., {j["Classroom"]} аудит.{'\n'+j["Teacher"] if j["Teacher"] else ''}</blockquote>\n'
         await callback.message.delete()
         await callback.message.answer(
             f'{text}',
-            reply_markup=markup, parse_mode="HTML"
+            reply_markup=back_to_schedule(), parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'next_week':
         date = func.get_week_and_day()
         week, day = date
         reversing_list = [1, 0]
         week = reversing_list[week]
-        back = types.InlineKeyboardButton(
-            text="⬅️ Назад",
-            callback_data="schedule"
-        )
-        row = [back]
-        rows = [row]
-        markup = InlineKeyboardMarkup(inline_keyboard=rows)
         text = ''
         for i in schedule_base[week]:
             text += f"\n{i}:\n"
             for j in schedule_base[week][i]:
-                text += f'<blockquote>{j["Time"]} | {j["Matter"]}\n{j["Frame"]} корп., {j["Classroom"]} аудит.\n{j["Teacher"]}</blockquote>\n'
+                text += f'<blockquote>{j["Time"]} | {j["Matter"]}\n{j["Frame"]} корп., {j["Classroom"]} аудит.{'\n'+j["Teacher"] if j["Teacher"] else ''}</blockquote>\n'
         await callback.message.delete()
         await callback.message.answer(
             f'{text}',
-            reply_markup=markup, parse_mode="HTML"
+            reply_markup=back_to_schedule(), parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'together':
         date = func.get_week_and_day()
         week, day = date
-        back = types.InlineKeyboardButton(
-            text="⬅️ Назад",
-            callback_data="schedule"
-        )
-        row = [back]
-        rows = [row]
-        markup = InlineKeyboardMarkup(inline_keyboard=rows)
         text = ''
         try:
             for i in schedule_base[week][day]:
-                text += f'<blockquote>{i["Time"]} | {i["Matter"]}\n{i["Frame"]} корп., {i["Classroom"]} аудит.\n{i["Teacher"]}</blockquote>\n'
+                text += f'<blockquote>{i["Time"]} | {i["Matter"]}\n{i["Frame"]} корп., {i["Classroom"]} аудит.{'\n'+i["Teacher"] if i["Teacher"] else ''}</blockquote>\n'
         except KeyError:
             text += "Занятий нет 🎉"
         await callback.message.delete()
         await callback.message.answer(
             f'{day}:\n{text}',
-            reply_markup=markup, parse_mode="HTML"
+            reply_markup=back_to_schedule(), parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'tomorrow':
         date = func.get_tomorrow_week_and_day()
         week, day = date
-        back = types.InlineKeyboardButton(
-            text="⬅️ Назад",
-            callback_data="schedule"
-        )
-        row = [back]
-        rows = [row]
-        markup = InlineKeyboardMarkup(inline_keyboard=rows)
         text = ''
         try:
             for i in schedule_base[week][day]:
-                text += f'<blockquote>{i["Time"]} | {i["Matter"]}\n{i["Frame"]} корп., {i["Classroom"]} аудит.\n{i["Teacher"]}</blockquote>\n'
+                text += f'<blockquote>{i["Time"]} | {i["Matter"]}\n{i["Frame"]} корп., {i["Classroom"]} аудит.{'\n'+i["Teacher"] if i["Teacher"] else ''}</blockquote>\n'
         except KeyError:
             text += "Занятий нет 🎉"
         await callback.message.delete()
         await callback.message.answer(
             f'{day}:\n{text}',
-            reply_markup=markup, parse_mode="HTML"
+            reply_markup=back_to_schedule(), parse_mode="HTML"
         )
 
 
@@ -764,22 +608,10 @@ async def delete(callback: types.CallbackQuery):
 @dp.callback_query(F.data.split()[0] == "help")
 @flags.authorization(is_authorized=True)
 async def help(callback: types.CallbackQuery):
-    back = types.InlineKeyboardButton(
-        text="⬅️ Назад",
-        callback_data="main_menu"
-    )
-    row_back = [back]
-    b_privacy = types.InlineKeyboardButton(
-        text="Политика конфиденциальности",
-        url=f"https://telegra.ph/Politika-konfidencialnosti-09-08-51"
-    )
-    row_privacy = [b_privacy]
-    rows = [row_back, row_privacy]
-    markup = InlineKeyboardMarkup(inline_keyboard=rows)
     await callback.message.delete()
     await callback.message.answer(
         f'Если у Вас есть предложения, идеи или Вы нашли баг, то можете соообщить об этом, мы постараемся как можно быстрее ответить на Ваше сообщение.\n\nОбращаться по юзернейму {user_admin}',
-        reply_markup=markup
+        reply_markup=help_menu()
     )
 
 
