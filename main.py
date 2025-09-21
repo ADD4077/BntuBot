@@ -294,10 +294,10 @@ async def search_anonymous_chat(callback: types.CallbackQuery, state: FSMContext
 
 @dp.message(Command("report"))
 @flags.authorization(is_authorized=True)
-async def report(message):
-    if message := message.reply_to_message:
-        message_id = message.message_id
-        user_id = message.from_user.id
+async def report(message: types.Message):
+    if reply_message := message.reply_to_message:
+        message_id = reply_message.message_id
+        user_id = reply_message.from_user.id
         if user_id == message.from_user.id:
             return message.answer("Вы не можете пожаловаться на себя")
         async with aiosqlite.connect(server_db_path) as db:
@@ -313,13 +313,16 @@ async def report(message):
                             f"Жалоба на пользователя ID: {reported_user_id}\n"
                             f"От пользователя: {message.from_user.username}"
                         ),
-                        reply_markup=keyboards.report_menu(reported_user_id, message.from_user.id)
+                        reply_markup=keyboards.report_menu(
+                            reported_user_id, message.from_user.id
+                        )
                     )
                     await func.send_message(
                         bot,
                         id_admin,
-                        message,
-                        anon_chat_id
+                        reply_message,
+                        anon_chat_id,
+                        None
                     )
                     return message.answer("Жалоба отправлена")
                 return message.answer("Нужно отвечать на сообщение из диалога")
@@ -753,9 +756,10 @@ async def leave_chat(callback: types.CallbackQuery, state: FSMContext):
 
 @dp.message(AnonChatState.in_chat)
 @flags.banned(isnt_banned=True)
-async def on_message(message: types.message.Message):
+async def on_message(message: types.message.Message, **kwargs):
     if message.via_bot:
         return
+    media_group = kwargs.get("media_group")
     user_id = message.from_user.id
     async with aiosqlite.connect(server_db_path) as db:
         async with db.cursor() as cursor:
@@ -771,14 +775,16 @@ async def on_message(message: types.message.Message):
                         bot,
                         user_ids[1],
                         message,
-                        chat_id
+                        chat_id,
+                        media_group
                     )
                 else:
                     sent_message = await func.send_message(
                         bot,
                         user_ids[0],
                         message,
-                        chat_id
+                        chat_id,
+                        media_group
                     )
                 await cursor.execute(
                     """INSERT INTO messages
@@ -852,16 +858,44 @@ async def on_chat_edit_message(message: types.Message):
             for user in users:
                 if user != user1_id:
                     user2_id = user
-            id_to_edit = (await (await cursor.execute(
+            response = (await (await cursor.execute(
                     """SELECT bot_message_id FROM messages WHERE
                     user_message_id = ?""",
                     (message_id, )
-                )).fetchone())[0]
-    await bot.edit_message_text(
-        message.text + "\n\n(Ред.)",
-        chat_id=user2_id,
-        message_id=id_to_edit
-    )
+                )).fetchone())
+            fallback_response_inc = (await (await cursor.execute(
+                    """SELECT bot_message_id FROM messages WHERE
+                    user_message_id = ?""",
+                    (message_id+1, )
+                )).fetchone())
+            fallback_response_dec = (await (await cursor.execute(
+                    """SELECT bot_message_id FROM messages WHERE
+                    user_message_id = ?""",
+                    (message_id-1, )
+                )).fetchone())
+            if not response:
+                id_to_edit = fallback_response_inc if fallback_response_inc else fallback_response_dec
+            else:
+                id_to_edit = response
+            if not id_to_edit:
+                return await message.answer(
+                    "НЕ СООБЩАЙТЕ ОБ ЭТОМ В ПОДДЕРЖКУ!\n\n"
+                    "Изменение сообщения для вашего собеседеника не удалось.\n"
+                    "Это известная ошибка и над ее решением уже работают."
+                )
+            id_to_edit = id_to_edit[0]
+    if message.text:
+        await bot.edit_message_text(
+            message.text + "\n\n(Ред.)",
+            chat_id=user2_id,
+            message_id=id_to_edit
+        )
+    elif message.caption:
+        await bot.edit_message_caption(
+            caption=message.caption + "\n\n(Ред.)",
+            chat_id=user2_id,
+            message_id=id_to_edit,
+        )
 
 
 
@@ -1044,6 +1078,7 @@ async def main():
     dp.callback_query.middleware(middleware.BanMiddleware())
     dp.message.middleware(middleware.AdminMiddleware())
     dp.callback_query.middleware(middleware.AdminMiddleware())
+    dp.update.middleware(middleware.MediaGroupMiddleware())
     await dp.start_polling(bot)
 
 if __name__ == "__main__":

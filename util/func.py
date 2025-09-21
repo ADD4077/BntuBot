@@ -1,6 +1,7 @@
 from aiogram.utils.keyboard import InlineKeyboardMarkup
 from aiogram.utils.media_group import MediaGroupBuilder
 from aiogram import types
+from aiogram.exceptions import TelegramBadRequest
 
 from datetime import datetime, timedelta
 
@@ -323,9 +324,10 @@ def parse_schedule() -> None:
 
 
 async def send_message(
-        bot, chat_id: int,
-        message: types.message.Message,
-        anon_chat_id: int
+    bot, chat_id: int,
+    message: types.message.Message,
+    anon_chat_id: int,
+    media_group
 ):
     replying = message.reply_to_message
     if replying:
@@ -348,14 +350,38 @@ async def send_message(
                         user_message_id = ?""",
                         (anon_chat_id, reply_message_id)
                     )).fetchone())[0]
+    if media_group:
+        caption = media_group[0].caption
+        builder = MediaGroupBuilder(caption=caption)
+        for media_message in media_group:
+            photo = media_message.photo
+            video = media_message.video
+            file = media_message.document
+            if photo:
+                builder.add_photo(media=photo[-1].file_id)
+            if video:
+                builder.add_video(media=video.file_id)
+            if file:
+                builder.add_document(media=file.file_id)
+        if replying:
+            return (await bot.send_media_group(
+                chat_id,
+                media=builder.build(),
+                reply_to_message_id=id_for_reply
+            ))[0]
+        return (await bot.send_media_group(
+            chat_id,
+            media=builder.build()
+        ))[0]
     text = message.text
+    caption = message.caption
     photos = message.photo
     videos = message.video
     files = message.document
     sticker = message.sticker
     voice = message.voice
     circle = message.video_note
-    builder = MediaGroupBuilder(caption=text)
+    builder = MediaGroupBuilder(caption=caption)
     if photos:
         builder.add_photo(media=photos[-1].file_id)
     if videos:
@@ -408,9 +434,13 @@ async def send_message(
         )
     if text:
         if replying:
-            return await bot.send_message(
-                chat_id,
-                text,
-                reply_to_message_id=id_for_reply
-            )
+            try:
+                return await bot.send_message(
+                    chat_id,
+                    text,
+                    reply_to_message_id=id_for_reply
+                )
+            except TelegramBadRequest as e:
+                if "message to be replied not found" in e.__repr__():
+                    return await bot.send_message(chat_id, text)
         return await bot.send_message(chat_id, text)

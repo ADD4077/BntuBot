@@ -2,7 +2,7 @@ from typing import Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware
 from aiogram.dispatcher.flags import get_flag
-from aiogram.types import TelegramObject, LabeledPrice, Message
+from aiogram.types import TelegramObject, LabeledPrice, Message, Update
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import aiosqlite
@@ -12,6 +12,10 @@ from util.func import auth_send
 import os
 
 from util.config import server_db_path
+from util.states import AnonChatState
+
+from collections import defaultdict
+import asyncio
 
 from dotenv import load_dotenv
 
@@ -122,4 +126,83 @@ class AdminMiddleware(BaseMiddleware):
                         else:
                             return await handler(event, data)
         else:
+            return await handler(event, data)
+
+
+class MediaGroupMiddlewaref(BaseMiddleware):
+    def __init__(self, latency: float = 1.0):
+        super().__init__()
+        self.latency = latency
+        self.media_groups = {}
+
+    async def __call__(
+        self,
+        handler: Callable[[Update, Dict[str, Any]], Awaitable[Any]],
+        event: Update,
+        data: Dict[str, Any]
+    ) -> Any:
+        if not event.message:
+            return await handler(event, data)
+        if event.message.media_group_id:
+            media_group_id = event.message.media_group_id
+            if self.media_groups.get(media_group_id):
+                self.media_groups[media_group_id].append(event.message)
+            else:
+                self.media_groups[media_group_id] = [event.message]
+            data["media_group"] = self.media_groups[media_group_id]
+        return await handler(event, data)
+
+
+class MediaGroupMiddleware(BaseMiddleware):
+    def __init__(self, latency: float = 1.0):
+        super().__init__()
+        self.latency = latency
+        self.media_groups: Dict[int, list[Message]] = {}
+        self.tasks: Dict[str, asyncio.Task] = {}
+
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any],
+    ) -> Any:
+        if not event.message or not event.message.media_group_id:
+            return await handler(event, data)
+        if (await data["state"].get_state()) == AnonChatState.in_chat:
+            media_group_id = event.message.media_group_id
+            if media_group_id not in self.media_groups:
+                self.media_groups[media_group_id] = []
+            self.media_groups[media_group_id].append(event.message)
+            if media_group_id in self.tasks:
+                self.tasks[media_group_id].cancel()
+            self.tasks[media_group_id] = asyncio.create_task(
+                self._flush_group(media_group_id, handler, event, data)
+            )
+        else:
+            return await handler(event, data)
+
+    async def _flush_group(
+        self,
+        media_group_id: str,
+        handler: Callable[[Update, Dict[str, Any]], Awaitable[Any]],
+        event: Update,
+        data: Dict[str, Any],
+    ):
+        try:
+            await asyncio.sleep(self.latency)
+        except asyncio.CancelledError:
+            return
+
+        messages = self.media_groups.pop(media_group_id, [])
+        self.tasks.pop(media_group_id, None)
+
+        if messages:
+            # First message is usually the one with caption
+            first_message = messages[0]
+
+            # Pass media group explicitly via middleware `data`
+            data["media_group"] = messages
+            data["first_message"] = first_message
+
+            # Call handler with the original event (unchanged) + updated data
             return await handler(event, data)
