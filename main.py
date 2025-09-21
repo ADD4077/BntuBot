@@ -2,6 +2,7 @@ import os
 import pytz
 import asyncio
 import aiosqlite
+import datetime
 import json
 import hashlib
 
@@ -20,12 +21,13 @@ from util.literature_searching import search_literature
 from util import middleware
 
 from util.states import AutoAuth, AcceptAuthForm, AnonChatState, Form
+from util import states
 
 from dotenv import load_dotenv
 
 from util.config import server_db_path
 
-from keyboards import *
+from util import keyboards
 
 load_dotenv()
 
@@ -93,7 +95,7 @@ async def start(message: types.Message):
     await message.answer_photo(
             photo=main_menu_image,
             caption=f"💚 Рады вас видеть, @{message.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
-            reply_markup=main_menu_buttons()
+            reply_markup=keyboards.main_menu_buttons()
         )
 
 
@@ -104,7 +106,7 @@ async def main_menu(callback: types.CallbackQuery):
         await callback.message.edit_caption(
             photo=main_menu_image,
             caption=f"💚 Рады вас видеть, @{callback.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
-            reply_markup=main_menu_buttons()
+            reply_markup=keyboards.main_menu_buttons()
         )
     # dont use bare except
     except Exception:
@@ -112,7 +114,7 @@ async def main_menu(callback: types.CallbackQuery):
         await callback.message.answer_photo(
                 photo=main_menu_image,
                 caption=f"💚 Рады вас видеть, @{callback.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
-                reply_markup=main_menu_buttons()
+                reply_markup=keyboards.main_menu_buttons()
             )
 
 
@@ -148,7 +150,7 @@ async def auto_auth_end(message: types.Message, state: FSMContext):
         )
         await message.answer(
             '⚠️ Ошибка сервера. Система БНТУ не отвечает. Автоматическая авторизация временно недоступна, но Вы можете авторизоваться вручную через фото профиля по кнопке "Вручную".',
-            reply_markup=auth_error()
+            reply_markup=keyboards.auth_error()
         )
     elif auth_status == 0:
         await message.answer(
@@ -188,7 +190,7 @@ async def auth_end(message: types.Message, state: FSMContext):
         id_admin,
         photo=photo.file_id,
         caption=f"Фото студенческого билета от пользователя @{message.from_user.username} (ID: {message.from_user.id})",
-        reply_markup=support_auth(message.from_user.id)
+        reply_markup=keyboards.support_auth(message.from_user.id)
     )
     await message.answer("Фото получено и отправлено на проверку. Ожидайте подтверждения.")
     await state.clear()
@@ -245,7 +247,7 @@ async def anonymous_chat(callback: types.CallbackQuery):
             "Чтобы выйти из диалога, напишите в чат команду /leave_chat\n\n"
             "💚 Приятного время провождения!"
         ), 
-        reply_markup=anonymous_chat_menu()
+        reply_markup=keyboards.anonymous_chat_menu()
     )
 
 
@@ -311,7 +313,7 @@ async def report(message):
                             f"Жалоба на пользователя ID: {reported_user_id}\n"
                             f"От пользователя: {message.from_user.username}"
                         ),
-                        reply_markup=report_menu(reported_user_id, message.from_user.id)
+                        reply_markup=keyboards.report_menu(reported_user_id, message.from_user.id)
                     )
                     await func.send_message(
                         bot,
@@ -323,15 +325,328 @@ async def report(message):
                 return message.answer("Нужно отвечать на сообщение из диалога")
     return message.answer("Вы должны ответить на сообщение с нарушением этой коммандой")
 
-@dp.message(Command("admin"))
-@flags.admin(is_admin=True)
-async def admin_panel(message):
+
+async def admin_panel(message, state=None):
+    if state:
+        await state.clear()
+    is_callback = isinstance(message, types.CallbackQuery)
+    if is_callback:
+        message = message.message
     async with aiosqlite.connect(server_db_path) as db:
         async with db.cursor() as cursor:
-            count = await (await cursor.execute("SELECT COUNT(id) FROM users")).fetchone()[0]
-    await message.answer(
-        f"Пользователей: {count}",
-        reply_markup=admin_panel_menu()
+            count = (await (await cursor.execute("SELECT COUNT(id) FROM users")).fetchone())[0]
+            faculties = await (await cursor.execute("SELECT faculty FROM users")).fetchall()
+    if is_callback:
+        return await message.edit_text(
+            f"Пользователей: {count}\n"
+            f"Факультетов: {len(set(faculties))}",
+            reply_markup=keyboards.admin_panel_menu()
+        )
+    return await message.answer(
+        f"Пользователей: {count}\n"
+        f"Факультетов: {len(set(faculties))}",
+        reply_markup=keyboards.admin_panel_menu()
+    )
+
+
+@dp.message(Command("admin"))
+@flags.admin(is_admin=True)
+@flags.authorization(is_authorized=True)
+async def admin_panel_by_callback(message: types.Message, state: FSMContext):
+    await admin_panel(message, state)
+
+
+@dp.callback_query(F.data.contains("admin_panel"))
+@flags.admin(is_admin=True)
+@flags.authorization(is_authorized=True)
+async def admin_panel_by_callback(callback: types.CallbackQuery, state: FSMContext):
+    await admin_panel(callback, state)
+
+
+@dp.callback_query(F.data == "search_user")
+@flags.admin(is_admin=True)
+@flags.authorization(is_authorized=True)
+async def search_user(callback: types.CallbackQuery):
+    await callback.message.edit_text(
+        "Выберите способ поиска пользователя:",
+        reply_markup=keyboards.search_user_buttons()
+    )
+
+
+@dp.callback_query(F.data == "search_by_user_id")
+@flags.admin(is_admin=True)
+@flags.authorization(is_authorized=True)
+async def search_by_user_id(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(states.InputUserID.InputByUserID)
+    return await callback.message.edit_text("Отправьте ID пользователя в телеграм")
+
+
+@dp.callback_query(F.data == "search_by_group_number")
+@flags.admin(is_admin=True)
+@flags.authorization(is_authorized=True)
+async def search_by_group_number(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(states.InputUserID.InputByGroupNumber)
+    return await callback.message.edit_text("Отправьте номер студенческого билета пользователя")
+
+
+@dp.message(states.InputUserID.InputByUserID)
+async def input_user_id(message: types.Message, state: FSMContext):
+    await state.clear()
+    try:
+        user_id = int(message.text)
+    except ValueError:
+        await state.clear()
+        return await message.answer(
+            "Введите корректное число.",
+            reply_markup=keyboards.back_to_admin_panel()
+        )
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            response = await (await cursor.execute(
+                "SELECT student_code, FullName, faculty FROM users WHERE id = ?",
+                (user_id, )
+            )).fetchone()
+    if not response:
+        return await message.answer(
+            "Пользователь не найден",
+            reply_markup=keyboards.back_to_admin_panel()
+        )
+    text = "Информация о пользователе:\n\n"
+    info_lines = ["Номер студ.билета:", "Фамилия и имя:", "Факультет:"]
+    for info_line, info in zip(info_lines, response):
+        text += f"{info_line}\n<blockquote>{info}</blockquote>\n\n"
+    return await message.answer(
+        text.rstrip("\n"),
+        reply_markup=keyboards.back_to_admin_panel(),
+        parse_mode="HTML"
+    )
+
+
+@dp.message(states.InputUserID.InputByGroupNumber)
+async def input_group_number(message: types.Message, state: FSMContext):
+    await state.clear()
+    try:
+        group_number = int(message.text)
+    except ValueError:
+        await state.clear()
+        return await message.answer(
+            "Введите корректное число.",
+            reply_markup=keyboards.back_to_admin_panel()
+        )
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            response = await (await cursor.execute(
+                "SELECT id, FullName, faculty FROM users WHERE student_code = ?",
+                (group_number, )
+            )).fetchone()
+    if not response:
+        return await message.answer(
+            "Пользователь не найден",
+            reply_markup=keyboards.back_to_admin_panel()
+        )
+    text = "Информация о пользователе:\n\n"
+    info_lines = ["ID телеграм аккаунта:", "Фамилия и имя:", "Факультет:"]
+    for info_line, info in zip(info_lines, response):
+        text += f"{info_line}\n<blockquote>{info}</blockquote>\n\n"
+    return await message.answer(
+        text.rstrip("\n"),
+        reply_markup=keyboards.back_to_admin_panel(),
+        parse_mode="HTML"
+    )
+
+
+@dp.callback_query(F.data == "search_group")
+@flags.admin(is_admin=True)
+@flags.authorization(is_authorized=True)
+async def search_group_input(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(states.InputGroupNumber.userInput)
+    return await callback.message.edit_text(
+        "Отправьте номер группы:",
+        reply_markup=keyboards.back_to_admin_panel()
+    )
+
+
+@dp.message(states.InputGroupNumber.userInput)
+async def search_group(message: types.Message, state: FSMContext):
+    group_number = message.text
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            response = await (await cursor.execute(
+                "SELECT id, student_code, FullName, faculty "
+                "FROM users WHERE CAST(student_code AS TEXT) LIKE (?)",
+                (group_number+"%", )
+            )).fetchall()
+    if not response:
+        return await message.answer(
+            "Нет результатов",
+            reply_markup=keyboards.back_to_admin_panel()
+        )
+    users_amount = len(response)
+    faculty = response[0][-1]
+    text = (
+        f"Информация о группе {group_number}:\n"
+        f"Кол-во пользователей: {users_amount}\n"
+        f"Факультет: {faculty}\n\n"
+        "Пользователи:\n"
+    )
+    text += "\n".join(
+        [
+            f"{i+1}. {info[2]} (Telegram ID: {info[0]}; Номер студ. билета: {info[1]})"
+            for i, info in enumerate(response)
+        ]
+    )
+    return await message.answer(
+        text,
+        reply_markup=keyboards.back_to_admin_panel()
+    )
+
+
+@dp.callback_query(F.data == "search_faculty")
+@flags.admin(is_admin=True)
+@flags.authorization(is_authorized=True)
+async def search_faculty_input(callback: types.CallbackQuery):
+    return await callback.message.edit_text(
+        "Искать пользователей из факультета:",
+        reply_markup=keyboards.search_faculty_buttons()
+    )
+
+
+@dp.callback_query(F.data == "search_by_faculty_abbr")
+@flags.admin(is_admin=True)
+@flags.authorization(is_authorized=True)
+async def search_by_faculty_abbr(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(states.InputFaculty.InputByLetters)
+    return await callback.message.edit_text(
+        "Введите аббревиатуру факультета:",
+        reply_markup=keyboards.back_to_admin_panel()
+    )
+
+
+@dp.callback_query(F.data == "search_by_faculty_number")
+@flags.admin(is_admin=True)
+@flags.authorization(is_authorized=True)
+async def search_by_faculty_number(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(states.InputFaculty.InputByNumbers)
+    return await callback.message.edit_text(
+        "Введите номер факультета:",
+        reply_markup=keyboards.back_to_admin_panel()
+    )
+
+
+@dp.message(states.InputFaculty.InputByLetters)
+async def input_faculty_abbr(message: types.Message, state: FSMContext):
+    await state.clear()
+    abbr = message.text.upper()
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            response = await (await cursor.execute(
+                "SELECT id, FullName "
+                "FROM users WHERE faculty = (?)",
+                (abbr, )
+            )).fetchall()
+    if not response:
+        return await message.answer(
+            "Нет результатов",
+            reply_markup=keyboards.back_to_admin_panel()
+        )
+    users_amount = len(response)
+    text = (
+        f'Информация о факультете "{abbr}":\n'
+        f"Кол-во пользователей: {users_amount}"
+    )
+    return await message.answer(
+        text,
+        reply_markup=keyboards.back_to_admin_panel()
+    )
+
+
+@dp.message(states.InputFaculty.InputByNumbers)
+async def input_faculty_numbers(message: types.Message, state: FSMContext):
+    await state.clear()
+    faculty = message.text
+    if len(faculty) != 3:
+        return await message.answer(
+            "Номер факультета должен состоять из трех цифр",
+            reply_markup=keyboards.back_to_admin_panel()
+        )
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            response = await (await cursor.execute(
+                "SELECT id, FullName, faculty "
+                "FROM users WHERE CAST(student_code AS TEXT) LIKE (?)",
+                (faculty+"%", )
+            )).fetchall()
+    if not response:
+        return await message.answer(
+            "Нет результатов",
+            reply_markup=keyboards.back_to_admin_panel()
+        )
+    users_amount = len(response)
+    faculty_abbr = response[0][-1]
+    text = (
+        f'Информация о факультете "{faculty_abbr}":\n'
+        f"Кол-во пользователей: {users_amount}"
+    )
+    return await message.answer(
+        text,
+        reply_markup=keyboards.back_to_admin_panel()
+    )
+
+
+@dp.callback_query(F.data == "admin_schedule")
+@flags.admin(is_admin=True)
+@flags.authorization(is_authorized=True)
+async def admin_schedule(callback: types.CallbackQuery):
+    schedule_files = os.listdir("./schedules/")
+    sorted_by_modification_time = sorted(
+        schedule_files,
+        key=lambda entry: os.path.getmtime(
+            os.path.join("./schedules/", entry)
+        ),
+        reverse=True
+    )
+    newest_modification = datetime.datetime.fromtimestamp(
+        os.path.getmtime(
+            os.path.join(
+                "./schedules/",
+                sorted_by_modification_time[0]
+            )
+        ),
+        pytz.timezone("Europe/Moscow")
+    ).strftime("%d.%m.%Y %H:%M:%S")
+    oldest_modificatiom = datetime.datetime.fromtimestamp(
+        os.path.getmtime(
+            os.path.join(
+                "./schedules/",
+                sorted_by_modification_time[-1]
+            )
+        ),
+        pytz.timezone("Europe/Moscow")
+    ).strftime("%d.%m.%Y %H:%M:%S")
+    return await callback.message.edit_text(
+        f"Самое последнее изменение: {newest_modification} ({sorted_by_modification_time[0]})\n"
+        f"Самое давнее изменение: {oldest_modificatiom} ({sorted_by_modification_time[-1]})",
+        reply_markup=keyboards.back_to_admin_panel()
+    )
+
+
+@dp.callback_query(F.data == "admin_literature")
+@flags.admin(is_admin=True)
+@flags.authorization(is_authorized=True)
+async def admin_literature(callback: types.CallbackQuery):
+    modification_time = datetime.datetime.fromtimestamp(
+        os.path.getmtime(
+            "./books/literature.json"
+        ),
+        pytz.timezone("Europe/Moscow")
+    ).strftime("%d.%m.%Y %H:%M:%S")
+    count = 0
+    for _, books in literature.items():
+        count += int(books["count"][1:-1])
+    return await callback.message.edit_text(
+        f"Последнее изменение литературы: {modification_time}\n"
+        f"Кол-во книг: {count}",
+        reply_markup=keyboards.back_to_admin_panel()
     )
 
 
@@ -426,7 +741,7 @@ async def leave_chat(callback: types.CallbackQuery, state: FSMContext):
                         await bot.send_message(
                             user_ids[i], 
                             "⛔️ Диалог окончен.",
-                            reply_markup=anonymous_chat_menu()
+                            reply_markup=keyboards.anonymous_chat_menu()
                         )
                 await cursor.execute(
                     "DELETE FROM chats WHERE user1_id = (?) OR user2_id = (?)",
@@ -475,13 +790,88 @@ async def on_message(message: types.message.Message):
                 await db.commit()
 
 
+@dp.message_reaction(AnonChatState.in_chat)
+async def on_chat_update(message_reaction: types.MessageReactionUpdated):
+    user1_id = message_reaction.user.id
+    if user1_id == bot.id:
+        return
+    message_id = message_reaction.message_id
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            chat_id = (await (await cursor.execute(
+                "SELECT id FROM chats "
+                "WHERE user2_id = ? "
+                "OR user1_id = ?",
+                (user1_id, user1_id)
+            )).fetchone())[0]
+            if await (await cursor.execute(
+                "SELECT chat_id FROM messages WHERE bot_message_id = ?",
+                (message_id, )
+            )).fetchone():
+                id_for_reaction, user2_id = (await (await cursor.execute(
+                    """SELECT user_message_id, user_id FROM messages WHERE
+                    bot_message_id = ?""",
+                    (message_id, )
+                )).fetchone())
+            else:
+                users = await (await cursor.execute(
+                    "SELECT user1_id, user2_id FROM chats WHERE id = ?",
+                    (chat_id, )
+                )).fetchone()
+                id_for_reaction = (await (await cursor.execute(
+                    """SELECT bot_message_id FROM messages WHERE
+                    user_message_id = ?""",
+                    (message_id, )
+                )).fetchone())[0]
+                for user in users:
+                    if user != user1_id:
+                        user2_id = user
+    await bot.set_message_reaction(
+        user2_id,
+        message_id=id_for_reaction,
+        reaction=message_reaction.new_reaction
+    )
+
+
+@dp.edited_message(AnonChatState.in_chat)
+async def on_chat_edit_message(message: types.Message):
+    user1_id = message.from_user.id
+    message_id = message.message_id
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            chat_id = (await (await cursor.execute(
+                "SELECT id FROM chats "
+                "WHERE user2_id = ? "
+                "OR user1_id = ?",
+                (user1_id, user1_id)
+            )).fetchone())[0]
+            users = await (await cursor.execute(
+                "SELECT user1_id, user2_id FROM chats WHERE id = ?",
+                (chat_id, )
+            )).fetchone()
+            for user in users:
+                if user != user1_id:
+                    user2_id = user
+            id_to_edit = (await (await cursor.execute(
+                    """SELECT bot_message_id FROM messages WHERE
+                    user_message_id = ?""",
+                    (message_id, )
+                )).fetchone())[0]
+    await bot.edit_message_text(
+        message.text + "\n\n(Ред.)",
+        chat_id=user2_id,
+        message_id=id_to_edit
+    )
+
+
+
 @dp.callback_query(F.data == "map")
 @flags.authorization(is_authorized=True)
 async def main_menu(callback: types.CallbackQuery):
     await callback.message.answer_photo(
         photo=map_photo,
         caption='🗺️ Карта мини-городка БНТУ',
-        reply_markup=map_menu()
+        reply_markup=keyboards.map_menu()
     )
     await callback.answer()
 
@@ -498,7 +888,7 @@ async def passes_button(callback: types.CallbackQuery):
         passes.append(b)
     await callback.message.edit_caption(
         caption='📗 Выберите нужный Вам предмет:',
-        reply_markup=passes_menu(passes)
+        reply_markup=keyboards.passes_menu(passes)
     )
 
 
@@ -508,7 +898,7 @@ async def pass_button(callback: types.CallbackQuery):
     text = f"{callback.data.split()[1]} | "+passes[callback.data.split()[1]]
     await callback.message.edit_caption(
         caption=text,
-        reply_markup=pass_detail_menu(), parse_mode="HTML"
+        reply_markup=keyboards.pass_detail_menu(), parse_mode="HTML"
     )
 
 
@@ -518,7 +908,7 @@ async def schedule(callback: types.CallbackQuery):
     try:
         await callback.message.edit_caption(
             caption='📚 Выберите нужное Вам расписание занятий:',
-            reply_markup=schedule_menu()
+            reply_markup=keyboards.schedule_menu()
             )
     # specify your exceptions
     except Exception:
@@ -526,7 +916,7 @@ async def schedule(callback: types.CallbackQuery):
         await callback.message.answer_photo(
             photo=main_menu_image,
             caption='📚 Выберите нужное Вам расписание занятий:',
-            reply_markup=schedule_menu()
+            reply_markup=keyboards.schedule_menu()
         )
 
 
@@ -553,7 +943,8 @@ async def schedule(callback: types.CallbackQuery):
         await callback.message.delete()
         await callback.message.answer(
             f'{text}',
-            reply_markup=back_to_schedule(), parse_mode="HTML"
+            reply_markup=keyboards.back_to_schedule(),
+            parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'next_week':
         date = func.get_week_and_day()
@@ -568,7 +959,7 @@ async def schedule(callback: types.CallbackQuery):
         await callback.message.delete()
         await callback.message.answer(
             f'{text}',
-            reply_markup=back_to_schedule(), parse_mode="HTML"
+            reply_markup=keyboards.back_to_schedule(), parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'together':
         date = func.get_week_and_day()
@@ -582,7 +973,7 @@ async def schedule(callback: types.CallbackQuery):
         await callback.message.delete()
         await callback.message.answer(
             f'{day}:\n{text}',
-            reply_markup=back_to_schedule(), parse_mode="HTML"
+            reply_markup=keyboards.back_to_schedule(), parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'tomorrow':
         date = func.get_tomorrow_week_and_day()
@@ -596,7 +987,7 @@ async def schedule(callback: types.CallbackQuery):
         await callback.message.delete()
         await callback.message.answer(
             f'{day}:\n{text}',
-            reply_markup=back_to_schedule(), parse_mode="HTML"
+            reply_markup=keyboards.back_to_schedule(), parse_mode="HTML"
         )
 
 
@@ -611,7 +1002,7 @@ async def help(callback: types.CallbackQuery):
     await callback.message.delete()
     await callback.message.answer(
         f'Если у Вас есть предложения, идеи или Вы нашли баг, то можете соообщить об этом, мы постараемся как можно быстрее ответить на Ваше сообщение.\n\nОбращаться по юзернейму {user_admin}',
-        reply_markup=help_menu()
+        reply_markup=keyboards.help_menu()
     )
 
 
