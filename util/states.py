@@ -17,3 +17,17 @@ class AutoAuth(StatesGroup):
 
 class AnonChatState(StatesGroup):
     in_chat = State()
+
+
+class InputUserID(StatesGroup):
+    InputByUserID = State()
+    InputByGroupNumber = State()
+
+
+class InputGroupNumber(StatesGroup):
+    userInput = State()
+
+
+class InputFaculty(StatesGroup):
+    InputByNumbers = State()
+    InputByLetters = State()

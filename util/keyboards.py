@@ -53,9 +53,35 @@ def admin_panel_menu():
     builder = InlineKeyboardBuilder()
     builder.button(text="Поиск пользователя", callback_data="search_user")
     builder.button(text="Поиск группы", callback_data="search_group")
+    builder.button(text="Поиск факультета", callback_data="search_faculty")
     builder.button(text="Расписание", callback_data="admin_schedule")
     builder.button(text="Литература", callback_data="admin_literature")
-    builder.adjust(2, 2)
+    builder.adjust(1, 1, 1, 2)
+    return builder.as_markup()
+
+
+def search_user_buttons():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Telegram ID", callback_data="search_by_user_id")
+    builder.button(text="Cтуд. билета", callback_data="search_by_group_number")
+    builder.button(text="Назад", callback_data="back_to_admin_panel")
+    builder.adjust(2, 1)
+    return builder.as_markup()
+
+
+def search_faculty_buttons():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="По аббревиатуре", callback_data="search_by_faculty_abbr")
+    builder.button(text="По номеру", callback_data="search_by_faculty_number")
+    builder.button(text="Назад", callback_data="back_to_admin_panel")
+    builder.adjust(2, 1)
+    return builder.as_markup()
+
+
+def back_to_admin_panel():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Назад", callback_data="back_to_admin_panel")
+    builder.adjust(1)
     return builder.as_markup()
 
 

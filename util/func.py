@@ -122,6 +122,16 @@ def next_element(element):
     return element.next_sibling.next_sibling
 
 
+def get_books_count() -> int:
+    """
+    returns amount of books in BNTU repository
+    """
+    response = requests.get("https://rep.bntu.by/")
+    soup = bs4.BeautifulSoup(response.text)
+    a_element = soup.find("a", href_="/handle/data/62")
+    return next_element(a_element).text
+
+
 def parse_literature() -> None:
     """
     Parses literature and saves it in ./books/ directory
