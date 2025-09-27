@@ -1,33 +1,30 @@
 import os
+import sys
 import pytz
 import asyncio
 import aiosqlite
 import datetime
 import json
 import hashlib
+import logging
 
 from aiogram.utils.markdown import hlink
 from aiogram.types import ChosenInlineResult, InlineQuery, \
                           InlineQueryResultArticle, InputTextMessageContent
 from aiogram.fsm.context import FSMContext
-from aiogram import Bot, Dispatcher, types, flags, filters
+from aiogram import Bot, Dispatcher, types, flags, filters, F
 from aiogram.filters.command import Command
-from aiogram import F
-from aiogram.utils.keyboard import InlineKeyboardMarkup
-from util.StateStorge import SQLiteStorage
 
+from util.StateStorge import SQLiteStorage
 from util import func
 from util.literature_searching import search_literature
 from util import middleware
-
 from util.states import AutoAuth, AcceptAuthForm, AnonChatState, Form
 from util import states
+from util.config import server_db_path
+from util import keyboards
 
 from dotenv import load_dotenv
-
-from util.config import server_db_path
-
-from util import keyboards
 
 load_dotenv()
 
@@ -37,12 +34,40 @@ main_menu_image = os.getenv('MAIN_IMAGE')
 example_photo = os.getenv('EXAMPLE_IMAGE')
 map_photo = os.getenv('MAP_IMAGE')
 
-user_admin = os.getenv('USER_ADMIN')
-id_admin = int(os.getenv('ID_ADMIN'))
+user_owner = os.getenv('USER_OWNER')
+id_owner = int(os.getenv('ID_OWNER'))
+moderators_chat_id = int(os.getenv("MODERATORS_CHAT_ID"))
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(storage=SQLiteStorage())
 tz = pytz.timezone("Europe/Moscow")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="[%(asctime)s] [%(name)s/%(levelname)s]: %(message)s",
+    handlers=[
+        logging.FileHandler(
+            f"./logs/{__name__}_{datetime.datetime.now(tz).strftime('%d-%m-%Y_%H-%M-%S')}.log",
+            mode="w"
+        ),
+        logging.StreamHandler(sys.stdout)
+    ],
+    force=True
+)
+logger = logging.getLogger(__name__)
+
+
+def handle_exception(exc_type, exc_value, exc_traceback):
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+    logger.critical(
+        "Uncaught exception:",
+        exc_info=(exc_type, exc_value, exc_traceback)
+    )
+
+
+sys.excepthook = handle_exception
 # with open('schedule.json', 'r', encoding="utf8") as json_file:
 #     schedule_base = json.load(json_file)
 
@@ -167,7 +192,7 @@ async def auto_auth_end(message: types.Message, state: FSMContext):
             await db.commit()
         await message.answer(f'✅ {auth_status[0]}, авторизация прошла успешно! Теперь Вы подтвержденный студент БНТУ! Вы можете вызвать главное меню командой /start')
         await bot.send_message(
-            id_admin, f'✅ Пользователь автоматически авторизован @{message.from_user.username} ({message.from_user.full_name}).'
+            id_owner, f'✅ Пользователь автоматически авторизован @{message.from_user.username} ({message.from_user.full_name}).'
         )
 
 
@@ -187,7 +212,7 @@ async def auth_end(message: types.Message, state: FSMContext):
         return await message.answer("Пожалуйста, отправьте именно фото.")
     photo = message.photo[-1]
     await bot.send_photo(
-        id_admin,
+        id_owner,
         photo=photo.file_id,
         caption=f"Фото студенческого билета от пользователя @{message.from_user.username} (ID: {message.from_user.id})",
         reply_markup=keyboards.support_auth(message.from_user.id)
@@ -308,7 +333,7 @@ async def report(message: types.Message):
                 )).fetchone():
                     reported_user_id, anon_chat_id = data
                     await bot.send_message(
-                        id_admin,
+                        moderators_chat_id,
                         (
                             f"Жалоба на пользователя ID: {reported_user_id}\n"
                             f"От пользователя: {message.from_user.username}"
@@ -319,10 +344,10 @@ async def report(message: types.Message):
                     )
                     await func.send_message(
                         bot,
-                        id_admin,
+                        moderators_chat_id,
                         reply_message,
                         anon_chat_id,
-                        None
+                        is_report=True
                     )
                     return message.answer("Жалоба отправлена")
                 return message.answer("Нужно отвечать на сообщение из диалога")
@@ -353,21 +378,24 @@ async def admin_panel(message, state=None):
 
 
 @dp.message(Command("admin"))
-@flags.admin(is_admin=True)
+@flags.owner(is_owner=True)
+@flags.permissions(any_permission=True)
 @flags.authorization(is_authorized=True)
 async def admin_panel_by_callback(message: types.Message, state: FSMContext):
     await admin_panel(message, state)
 
 
 @dp.callback_query(F.data.contains("admin_panel"))
-@flags.admin(is_admin=True)
+@flags.owner(is_owner=True)
+@flags.permissions(any_permission=True)
 @flags.authorization(is_authorized=True)
 async def admin_panel_by_callback(callback: types.CallbackQuery, state: FSMContext):
     await admin_panel(callback, state)
 
 
 @dp.callback_query(F.data == "search_user")
-@flags.admin(is_admin=True)
+@flags.owner(is_owner=True)
+@flags.permissions(any_permission=True)
 @flags.authorization(is_authorized=True)
 async def search_user(callback: types.CallbackQuery):
     await callback.message.edit_text(
@@ -377,7 +405,8 @@ async def search_user(callback: types.CallbackQuery):
 
 
 @dp.callback_query(F.data == "search_by_user_id")
-@flags.admin(is_admin=True)
+@flags.owner(is_owner=True)
+@flags.permissions(any_permission=True)
 @flags.authorization(is_authorized=True)
 async def search_by_user_id(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(states.InputUserID.InputByUserID)
@@ -385,7 +414,8 @@ async def search_by_user_id(callback: types.CallbackQuery, state: FSMContext):
 
 
 @dp.callback_query(F.data == "search_by_group_number")
-@flags.admin(is_admin=True)
+@flags.owner(is_owner=True)
+@flags.permissions(any_permission=True)
 @flags.authorization(is_authorized=True)
 async def search_by_group_number(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(states.InputUserID.InputByGroupNumber)
@@ -459,7 +489,8 @@ async def input_group_number(message: types.Message, state: FSMContext):
 
 
 @dp.callback_query(F.data == "search_group")
-@flags.admin(is_admin=True)
+@flags.owner(is_owner=True)
+@flags.permissions(any_permission=True)
 @flags.authorization(is_authorized=True)
 async def search_group_input(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(states.InputGroupNumber.userInput)
@@ -505,7 +536,8 @@ async def search_group(message: types.Message, state: FSMContext):
 
 
 @dp.callback_query(F.data == "search_faculty")
-@flags.admin(is_admin=True)
+@flags.owner(is_owner=True)
+@flags.permissions(any_permission=True)
 @flags.authorization(is_authorized=True)
 async def search_faculty_input(callback: types.CallbackQuery):
     return await callback.message.edit_text(
@@ -515,7 +547,8 @@ async def search_faculty_input(callback: types.CallbackQuery):
 
 
 @dp.callback_query(F.data == "search_by_faculty_abbr")
-@flags.admin(is_admin=True)
+@flags.owner(is_owner=True)
+@flags.permissions(any_permission=True)
 @flags.authorization(is_authorized=True)
 async def search_by_faculty_abbr(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(states.InputFaculty.InputByLetters)
@@ -526,7 +559,8 @@ async def search_by_faculty_abbr(callback: types.CallbackQuery, state: FSMContex
 
 
 @dp.callback_query(F.data == "search_by_faculty_number")
-@flags.admin(is_admin=True)
+@flags.owner(is_owner=True)
+@flags.permissions(any_permission=True)
 @flags.authorization(is_authorized=True)
 async def search_by_faculty_number(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(states.InputFaculty.InputByNumbers)
@@ -597,7 +631,8 @@ async def input_faculty_numbers(message: types.Message, state: FSMContext):
 
 
 @dp.callback_query(F.data == "admin_schedule")
-@flags.admin(is_admin=True)
+@flags.owner(is_owner=True)
+@flags.permissions(any_permission=True)
 @flags.authorization(is_authorized=True)
 async def admin_schedule(callback: types.CallbackQuery):
     schedule_files = os.listdir("./schedules/")
@@ -634,7 +669,8 @@ async def admin_schedule(callback: types.CallbackQuery):
 
 
 @dp.callback_query(F.data == "admin_literature")
-@flags.admin(is_admin=True)
+@flags.owner(is_owner=True)
+@flags.permissions(any_permission=True)
 @flags.authorization(is_authorized=True)
 async def admin_literature(callback: types.CallbackQuery):
     modification_time = datetime.datetime.fromtimestamp(
@@ -654,7 +690,9 @@ async def admin_literature(callback: types.CallbackQuery):
 
 
 @dp.callback_query(F.data.contains("ban_user"))
-@flags.admin(is_admin=True)
+@flags.owner(is_owner=True)
+@flags.moderator(is_moderator=True)
+@flags.permissions(any_permission=True)
 @flags.authorization(is_authorized=True)
 async def button_ban_user(callback: types.CallbackQuery):
     user_id = int(callback.data.split(" ")[1])
@@ -665,14 +703,15 @@ async def button_ban_user(callback: types.CallbackQuery):
                 (user_id, )
             )
             await db.commit()
-    return await callback.answer(
+    return await callback.message.edit_text(
         f"Пользователь ID: {user_id} забанен",
-        show_alert=True
     )
 
 
 @dp.message(Command("ban_user"))
-@flags.admin(is_admin=True)
+@flags.owner(is_owner=True)
+@flags.moderator(is_moderator=True)
+@flags.permissions(any_permission=True)
 @flags.authorization(is_authorized=True)
 async def ban_user(message, command: filters.Command):
     if not command.args:
@@ -689,7 +728,9 @@ async def ban_user(message, command: filters.Command):
 
 
 @dp.message(Command("unban_user"))
-@flags.admin(is_admin=True)
+@flags.owner(is_owner=True)
+@flags.moderator(is_moderator=True)
+@flags.permissions(any_permission=True)
 @flags.authorization(is_authorized=True)
 async def unban_user(message, command: filters.Command):
     if not command.args:
@@ -898,10 +939,9 @@ async def on_chat_edit_message(message: types.Message):
         )
 
 
-
 @dp.callback_query(F.data == "map")
 @flags.authorization(is_authorized=True)
-async def main_menu(callback: types.CallbackQuery):
+async def university_map(callback: types.CallbackQuery):
     await callback.message.answer_photo(
         photo=map_photo,
         caption='🗺️ Карта мини-городка БНТУ',
@@ -1039,9 +1079,34 @@ async def delete(callback: types.CallbackQuery):
 async def help(callback: types.CallbackQuery):
     await callback.message.delete()
     await callback.message.answer(
-        f'Если у Вас есть предложения, идеи или Вы нашли баг, то можете соообщить об этом, мы постараемся как можно быстрее ответить на Ваше сообщение.\n\nОбращаться по юзернейму {user_admin}',
+        f'Если у Вас есть предложения, идеи или Вы нашли баг, то можете соообщить об этом, мы постараемся как можно быстрее ответить на Ваше сообщение.\n\nОбращаться по юзернейму {user_owner}',
         reply_markup=keyboards.help_menu()
     )
+
+
+@dp.message(Command("add_moderator"))
+@flags.owner(is_owner=True)
+@flags.permissions(any_permission=True)
+async def add_moderator(message: types.Message, command: Command):
+    if not command.args:
+        return message.answer("Пожалуйста укажите ID пользователя")
+    user_id = int(command.args)
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            student_code = await (await cursor.execute(
+                "SELECT student_code FROM users WHERE "
+                "id = ?",
+                (user_id, )
+            )).fetchone()
+            if not student_code:
+                return await message.answer("Пользователь не найден")
+            student_code = student_code[0]
+            await cursor.execute(
+                "INSERT INTO moderators (id, student_code) VALUES (?, ?)",
+                (user_id, student_code)
+            )
+            await db.commit()
+    return await message.answer("Пользователь назначен модератором")
 
 
 async def main():
@@ -1072,16 +1137,26 @@ async def main():
                 user_id INTEGER NOT NULL,
                 FOREIGN KEY (user_id) REFERENCES users(id)
             )""")
+            await cursor.execute("""CREATE TABLE IF NOT EXISTS moderators(
+                id INT PRIMARY KEY,
+                student_code TEXT NOT NULL,
+                hired_at DATETIME DEFAULT (datetime('now', 'localtime')),
+                FOREIGN KEY (student_code) REFERENCES users(student_code)
+            )""")
 
         await db.commit()
     me = await bot.get_me()
-    print(f'@{me.username} ({me.first_name})')
+    logger.info(f"@{me.username} ({me.first_name})")
     dp.message.middleware(middleware.AuthorizationMiddleware())
     dp.callback_query.middleware(middleware.AuthorizationMiddleware())
     dp.message.middleware(middleware.BanMiddleware())
     dp.callback_query.middleware(middleware.BanMiddleware())
-    dp.message.middleware(middleware.AdminMiddleware())
-    dp.callback_query.middleware(middleware.AdminMiddleware())
+    dp.message.middleware(middleware.OwnerMiddleware())
+    dp.callback_query.middleware(middleware.OwnerMiddleware())
+    dp.message.middleware(middleware.ModeratorMiddleware())
+    dp.callback_query.middleware(middleware.ModeratorMiddleware())
+    dp.message.middleware(middleware.PermissonMiddleware())
+    dp.callback_query.middleware(middleware.PermissonMiddleware())
     dp.update.middleware(middleware.MediaGroupMiddleware())
     await dp.start_polling(bot)
 

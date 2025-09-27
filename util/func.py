@@ -5,7 +5,7 @@ from aiogram.exceptions import TelegramBadRequest
 
 from datetime import datetime, timedelta
 
-from typing import Union
+from typing import Union, Any
 from util.config import server_db_path, literature_per_faculty_json_path
 import aiosqlite
 import requests
@@ -213,6 +213,7 @@ def parse_literature() -> None:
         json.dump(literature, jsonfile, indent=4, ensure_ascii=False)
     return None
 
+
 replacements = {
     'Практ': 'Практ.',
     'Лекц': 'Лекц.',
@@ -327,10 +328,11 @@ async def send_message(
     bot, chat_id: int,
     message: types.message.Message,
     anon_chat_id: int,
-    media_group
+    media_group: Union[Any, None] = None,
+    is_report: Union[bool, None] = None
 ):
     replying = message.reply_to_message
-    if replying:
+    if replying and not is_report:
         reply_message_id = replying.message_id
         async with aiosqlite.connect(server_db_path) as db:
             async with db.cursor() as cursor:
