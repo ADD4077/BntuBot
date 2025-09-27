@@ -69,6 +69,22 @@ def search_user_buttons():
     return builder.as_markup()
 
 
+def control_user_buttons(user_id):
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Сообщение", callback_data=f"send_message_for_user {user_id}")
+    builder.button(text="Назад", callback_data="back_to_admin_panel")
+    builder.adjust(1, 1)
+    return builder.as_markup()
+
+
+def control_group_buttons(group_id):
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Рассылка", callback_data=f"send_message_for_group {group_id}")
+    builder.button(text="Назад", callback_data="back_to_admin_panel")
+    builder.adjust(1, 1)
+    return builder.as_markup()
+
+
 def search_faculty_buttons():
     builder = InlineKeyboardBuilder()
     builder.button(text="По аббревиатуре", callback_data="search_by_faculty_abbr")

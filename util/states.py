@@ -31,3 +31,12 @@ class InputGroupNumber(StatesGroup):
 class InputFaculty(StatesGroup):
     InputByNumbers = State()
     InputByLetters = State()
+
+
+class InputMessageForUser(StatesGroup):
+    user_id = State()
+    message = State()
+    
+class InputMessageForGroup(StatesGroup):
+    group_id = State()
+    message = State()

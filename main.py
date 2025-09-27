@@ -14,6 +14,7 @@ from aiogram.types import ChosenInlineResult, InlineQuery, \
 from aiogram.fsm.context import FSMContext
 from aiogram import Bot, Dispatcher, types, flags, filters, F
 from aiogram.filters.command import Command
+from aiogram.exceptions import TelegramForbiddenError
 
 from util.StateStorge import SQLiteStorage
 from util import func
@@ -351,7 +352,7 @@ async def report(message: types.Message):
                     )
                     return message.answer("Жалоба отправлена")
                 return message.answer("Нужно отвечать на сообщение из диалога")
-    return message.answer("Вы должны ответить на сообщение с нарушением этой коммандой")
+    message.answer("Вы должны ответить на сообщение с нарушением этой коммандой")
 
 
 async def admin_panel(message, state=None):
@@ -370,7 +371,7 @@ async def admin_panel(message, state=None):
             f"Факультетов: {len(set(faculties))}",
             reply_markup=keyboards.admin_panel_menu()
         )
-    return await message.answer(
+    await message.answer(
         f"Пользователей: {count}\n"
         f"Факультетов: {len(set(faculties))}",
         reply_markup=keyboards.admin_panel_menu()
@@ -410,7 +411,7 @@ async def search_user(callback: types.CallbackQuery):
 @flags.authorization(is_authorized=True)
 async def search_by_user_id(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(states.InputUserID.InputByUserID)
-    return await callback.message.edit_text("Отправьте Telegram ID пользователя")
+    await callback.message.edit_text("Отправьте Telegram ID пользователя")
 
 
 @dp.callback_query(F.data == "search_by_group_number")
@@ -419,7 +420,7 @@ async def search_by_user_id(callback: types.CallbackQuery, state: FSMContext):
 @flags.authorization(is_authorized=True)
 async def search_by_group_number(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(states.InputUserID.InputByGroupNumber)
-    return await callback.message.edit_text("Отправьте номер студенческого билета пользователя")
+    await callback.message.edit_text("Отправьте номер студенческого билета пользователя")
 
 
 @dp.message(states.InputUserID.InputByUserID)
@@ -448,12 +449,75 @@ async def input_user_id(message: types.Message, state: FSMContext):
     info_lines = ["Номер студ.билета:", "Фамилия и имя:", "Факультет:"]
     for info_line, info in zip(info_lines, response):
         text += f"{info_line}\n<blockquote>{info}</blockquote>\n\n"
-    return await message.answer(
+    await message.answer(
         text.rstrip("\n"),
-        reply_markup=keyboards.back_to_admin_panel(),
+        reply_markup=keyboards.control_user_buttons(user_id),
         parse_mode="HTML"
     )
 
+
+@dp.callback_query(F.data.split()[0] == "send_message_for_user")
+@flags.owner(is_owner=True)
+@flags.permissions(any_permission=True)
+@flags.authorization(is_authorized=True)
+async def send_message_for_user(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.edit_text(f'Отправьте сообщение, которое хотите отправить пользователю с ID: {callback.data.split()[1]}')
+    await state.set_state(states.InputMessageForUser.user_id)
+    await state.update_data(user_id=int(callback.data.split()[1]))
+    await state.set_state(states.InputMessageForUser.message)
+
+
+@dp.callback_query(F.data.split()[0] == "send_message_for_group")
+@flags.owner(is_owner=True)
+@flags.permissions(any_permission=True)
+@flags.authorization(is_authorized=True)
+async def send_message_for_group(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.edit_text(f'Отправьте сообщение, которое хотите отправить группе {callback.data.split()[1]}')
+    await state.set_state(states.InputMessageForGroup.group_id)
+    await state.update_data(group_id=int(callback.data.split()[1]))
+    await state.set_state(states.InputMessageForGroup.message)
+
+
+@dp.message(states.InputMessageForGroup.message)
+async def input_send_message_for_user(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    group_number = data.get("group_id")
+    await state.clear()
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            users = await (await cursor.execute(
+                "SELECT id FROM users WHERE substr(student_code, 1, length(student_code) - 2) = ?",
+                (str(group_number),)
+            )).fetchall()
+    sending=0
+    banned=0
+    for user_id in users:
+        try:
+            await bot.send_message(chat_id=user_id[0], text=f"Сообщение от администратора:\n{message.text}")
+            sending+=1
+        except TelegramForbiddenError as e:
+            if "bot was blocked by the user" in str(e):
+                banned+=1
+    await message.answer(
+        f'Рассылка пользователям группы {group_number} завершена!\n\n'
+        f'Отправлено: {sending}\n'
+        f'Забанили: {banned}\n'
+        f'Неизвестно: {len(users) - (sending+banned)}\n'
+        )
+
+
+@dp.message(states.InputMessageForUser.message)
+async def input_send_message_for_user(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    user_id = data.get("user_id")
+    await state.clear()
+    try:
+        await bot.send_message(chat_id=user_id, text=f"Сообщение от администратора:\n{message.text}")
+    except TelegramForbiddenError as e:
+        if "bot was blocked by the user" in str(e):
+            return await message.answer(f'Пользователь заблокировал бота.')
+    await message.answer(f'Сообщение отправлено пользователю!')
+    
 
 @dp.message(states.InputUserID.InputByGroupNumber)
 async def input_group_number(message: types.Message, state: FSMContext):
@@ -483,7 +547,7 @@ async def input_group_number(message: types.Message, state: FSMContext):
         text += f"{info_line}\n<blockquote>{info}</blockquote>\n\n"
     return await message.answer(
         text.rstrip("\n"),
-        reply_markup=keyboards.back_to_admin_panel(),
+        reply_markup=keyboards.control_user_buttons(response[0]),
         parse_mode="HTML"
     )
 
@@ -529,9 +593,9 @@ async def search_group(message: types.Message, state: FSMContext):
             for i, info in enumerate(response)
         ]
     )
-    return await message.answer(
+    await message.answer(
         text,
-        reply_markup=keyboards.back_to_admin_panel()
+        reply_markup=keyboards.control_group_buttons(group_number)
     )
 
 
@@ -540,7 +604,7 @@ async def search_group(message: types.Message, state: FSMContext):
 @flags.permissions(any_permission=True)
 @flags.authorization(is_authorized=True)
 async def search_faculty_input(callback: types.CallbackQuery):
-    return await callback.message.edit_text(
+    await callback.message.edit_text(
         "Искать пользователей из факультета:",
         reply_markup=keyboards.search_faculty_buttons()
     )
@@ -552,7 +616,7 @@ async def search_faculty_input(callback: types.CallbackQuery):
 @flags.authorization(is_authorized=True)
 async def search_by_faculty_abbr(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(states.InputFaculty.InputByLetters)
-    return await callback.message.edit_text(
+    await callback.message.edit_text(
         "Введите аббревиатуру факультета:",
         reply_markup=keyboards.back_to_admin_panel()
     )
@@ -591,7 +655,7 @@ async def input_faculty_abbr(message: types.Message, state: FSMContext):
         f'Информация о факультете "{abbr}":\n'
         f"Кол-во пользователей: {users_amount}"
     )
-    return await message.answer(
+    await message.answer(
         text,
         reply_markup=keyboards.back_to_admin_panel()
     )
@@ -624,7 +688,7 @@ async def input_faculty_numbers(message: types.Message, state: FSMContext):
         f'Информация о факультете "{faculty_abbr}":\n'
         f"Кол-во пользователей: {users_amount}"
     )
-    return await message.answer(
+    await message.answer(
         text,
         reply_markup=keyboards.back_to_admin_panel()
     )
@@ -661,7 +725,7 @@ async def admin_schedule(callback: types.CallbackQuery):
         ),
         pytz.timezone("Europe/Moscow")
     ).strftime("%d.%m.%Y %H:%M:%S")
-    return await callback.message.edit_text(
+    await callback.message.edit_text(
         f"Самое последнее изменение: {newest_modification} ({sorted_by_modification_time[0]})\n"
         f"Самое давнее изменение: {oldest_modificatiom} ({sorted_by_modification_time[-1]})",
         reply_markup=keyboards.back_to_admin_panel()
@@ -682,7 +746,7 @@ async def admin_literature(callback: types.CallbackQuery):
     count = 0
     for _, books in literature.items():
         count += int(books["count"][1:-1])
-    return await callback.message.edit_text(
+    await callback.message.edit_text(
         f"Последнее изменение литературы: {modification_time}\n"
         f"Кол-во книг: {count}",
         reply_markup=keyboards.back_to_admin_panel()
@@ -703,7 +767,7 @@ async def button_ban_user(callback: types.CallbackQuery):
                 (user_id, )
             )
             await db.commit()
-    return await callback.message.edit_text(
+    await callback.message.edit_text(
         f"Пользователь ID: {user_id} забанен",
     )
 
@@ -724,7 +788,7 @@ async def ban_user(message, command: filters.Command):
                 (user_id, )
             )
             await db.commit()
-    return await message.answer("Пользователь блокирован")
+    await message.answer("Пользователь блокирован")
 
 
 @dp.message(Command("unban_user"))
@@ -743,13 +807,11 @@ async def unban_user(message, command: filters.Command):
                 (user_id, )
             )
             await db.commit()
-    return await message.answer("Пользователь разблокирован")
+    await message.answer("Пользователь разблокирован")
 
 
 @dp.pre_checkout_query()
-async def on_pre_checkout_query(
-    pre_checkout_query: types.PreCheckoutQuery,
-):
+async def on_pre_checkout_query(pre_checkout_query: types.PreCheckoutQuery,):
     await pre_checkout_query.answer(ok=True)
 
 
@@ -764,7 +826,7 @@ async def on_payment(message: types.Message):
                     (user_id, )
                 )
                 await db.commit()
-        return await message.answer(
+        await message.answer(
             "Поздравляем с успешным приобретением разблокиорвки!",
             message_effect_id="5104841245755180586"
         )
@@ -984,7 +1046,6 @@ async def schedule(callback: types.CallbackQuery):
             caption='📚 Выберите нужное Вам расписание занятий:',
             reply_markup=keyboards.schedule_menu()
             )
-    # specify your exceptions
     except Exception:
         await callback.message.delete()
         await callback.message.answer_photo(
@@ -1106,7 +1167,7 @@ async def add_moderator(message: types.Message, command: Command):
                 (user_id, student_code)
             )
             await db.commit()
-    return await message.answer("Пользователь назначен модератором")
+    await message.answer("Пользователь назначен модератором")
 
 
 async def main():
