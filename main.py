@@ -381,7 +381,7 @@ async def search_user(callback: types.CallbackQuery):
 @flags.authorization(is_authorized=True)
 async def search_by_user_id(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(states.InputUserID.InputByUserID)
-    return await callback.message.edit_text("Отправьте ID пользователя в телеграм")
+    return await callback.message.edit_text("Отправьте Telegram ID пользователя")
 
 
 @dp.callback_query(F.data == "search_by_group_number")
@@ -973,7 +973,8 @@ async def schedule(callback: types.CallbackQuery):
         for i in schedule_base[week]:
             text += f"\n{i}:\n"
             for j in schedule_base[week][i]:
-                text += f'<blockquote>{j["Time"]} | {j["Matter"]}\n{j["Frame"]} корп., {j["Classroom"]} аудит.{'\n'+j["Teacher"] if j["Teacher"] else ''}</blockquote>\n'
+                teacher_text = ("\n" + j["Teacher"]) if j["Teacher"] else ""
+                text += f'<blockquote>{j["Time"]} | {j["Matter"]}\n{j["Frame"]} корп., {j["Classroom"]} аудит.{teacher_text}</blockquote>\n'
         await callback.message.delete()
         await callback.message.answer(
             f'{text}',
@@ -989,7 +990,8 @@ async def schedule(callback: types.CallbackQuery):
         for i in schedule_base[week]:
             text += f"\n{i}:\n"
             for j in schedule_base[week][i]:
-                text += f'<blockquote>{j["Time"]} | {j["Matter"]}\n{j["Frame"]} корп., {j["Classroom"]} аудит.{'\n'+j["Teacher"] if j["Teacher"] else ''}</blockquote>\n'
+                teacher_text = ("\n" + j["Teacher"]) if j["Teacher"] else ""
+                text += f'<blockquote>{j["Time"]} | {j["Matter"]}\n{j["Frame"]} корп., {j["Classroom"]} аудит.{teacher_text}</blockquote>\n'
         await callback.message.delete()
         await callback.message.answer(
             f'{text}',
@@ -1001,7 +1003,8 @@ async def schedule(callback: types.CallbackQuery):
         text = ''
         try:
             for i in schedule_base[week][day]:
-                text += f'<blockquote>{i["Time"]} | {i["Matter"]}\n{i["Frame"]} корп., {i["Classroom"]} аудит.{'\n'+i["Teacher"] if i["Teacher"] else ''}</blockquote>\n'
+                teacher_text = ("\n" + i["Teacher"]) if i["Teacher"] else ""
+                text += f'<blockquote>{i["Time"]} | {i["Matter"]}\n{i["Frame"]} корп., {i["Classroom"]} аудит.{teacher_text}</blockquote>\n'
         except KeyError:
             text += "Занятий нет 🎉"
         await callback.message.delete()
@@ -1015,7 +1018,8 @@ async def schedule(callback: types.CallbackQuery):
         text = ''
         try:
             for i in schedule_base[week][day]:
-                text += f'<blockquote>{i["Time"]} | {i["Matter"]}\n{i["Frame"]} корп., {i["Classroom"]} аудит.{'\n'+i["Teacher"] if i["Teacher"] else ''}</blockquote>\n'
+                teacher_text = ("\n" + i["Teacher"]) if i["Teacher"] else ""
+                text += f'<blockquote>{i["Time"]} | {i["Matter"]}\n{i["Frame"]} корп., {i["Classroom"]} аудит.{teacher_text}</blockquote>\n'
         except KeyError:
             text += "Занятий нет 🎉"
         await callback.message.delete()
