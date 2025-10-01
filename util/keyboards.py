@@ -103,7 +103,7 @@ def back_to_admin_panel():
 
 def map_menu():
     builder = InlineKeyboardBuilder()
-    builder.button(text="Убрать", callback_data="delete")
+    builder.button(text="Назад", callback_data="main_menu")
     return builder.as_markup()
 
 
@@ -132,6 +132,17 @@ def schedule_menu():
     builder.adjust(2, 2, 1)
     return builder.as_markup()
 
+def schedule_menu_other(week):
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Пн", callback_data=f"send_schedule_week Понедельник {week}")
+    builder.button(text="Вт", callback_data=f"send_schedule_week Вторник {week}")
+    builder.button(text="Ср", callback_data=f"send_schedule_week Среда {week}")
+    builder.button(text="Чт", callback_data=f"send_schedule_week Четверг {week}")
+    builder.button(text="Пт", callback_data=f"send_schedule_week Пятница {week}")
+    builder.button(text="Сб", callback_data=f"send_schedule_week Суббота {week}")
+    builder.button(text="⬅️ Назад", callback_data="return_schedule")
+    builder.adjust(3, 3, 1)
+    return builder.as_markup()
 
 def back_to_schedule():
     builder = InlineKeyboardBuilder()

@@ -32,6 +32,7 @@ load_dotenv()
 API_TOKEN = os.getenv('TOKEN')
 
 main_menu_image = os.getenv('MAIN_IMAGE')
+schedule_image = os.getenv('SCHEDULE_IMAGE')
 example_photo = os.getenv('EXAMPLE_IMAGE')
 map_photo = os.getenv('MAP_IMAGE')
 
@@ -128,20 +129,19 @@ async def start(message: types.Message):
 @dp.callback_query(F.data == "main_menu")
 @flags.authorization(is_authorized=True)
 async def main_menu(callback: types.CallbackQuery):
-    try:
-        await callback.message.edit_caption(
+    # try:
+    #     await callback.message.edit_caption(
+    #         photo=main_menu_image,
+    #         caption=f"💚 Рады вас видеть, @{callback.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
+    #         reply_markup=keyboards.main_menu_buttons()
+    #     )
+    # except Exception:
+    await callback.message.delete()
+    await callback.message.answer_photo(
             photo=main_menu_image,
             caption=f"💚 Рады вас видеть, @{callback.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
             reply_markup=keyboards.main_menu_buttons()
         )
-    # dont use bare except
-    except Exception:
-        await callback.message.delete()
-        await callback.message.answer_photo(
-                photo=main_menu_image,
-                caption=f"💚 Рады вас видеть, @{callback.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
-                reply_markup=keyboards.main_menu_buttons()
-            )
 
 
 @dp.callback_query(F.data == "auto_auth")
@@ -498,6 +498,8 @@ async def input_send_message_for_user(message: types.Message, state: FSMContext)
         except TelegramForbiddenError as e:
             if "bot was blocked by the user" in str(e):
                 banned+=1
+        except:
+            pass
     await message.answer(
         f'Рассылка пользователям группы {group_number} завершена!\n\n'
         f'Отправлено: {sending}\n'
@@ -1004,12 +1006,12 @@ async def on_chat_edit_message(message: types.Message):
 @dp.callback_query(F.data == "map")
 @flags.authorization(is_authorized=True)
 async def university_map(callback: types.CallbackQuery):
+    await callback.message.delete()
     await callback.message.answer_photo(
         photo=map_photo,
         caption='🗺️ Карта мини-городка БНТУ',
         reply_markup=keyboards.map_menu()
     )
-    await callback.answer()
 
 
 @dp.callback_query(F.data == "passes")
@@ -1041,64 +1043,38 @@ async def pass_button(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "schedule")
 @flags.authorization(is_authorized=True)
 async def schedule(callback: types.CallbackQuery):
-    try:
-        await callback.message.edit_caption(
-            caption='📚 Выберите нужное Вам расписание занятий:',
-            reply_markup=keyboards.schedule_menu()
-            )
-    except Exception:
-        await callback.message.delete()
-        await callback.message.answer_photo(
-            photo=main_menu_image,
-            caption='📚 Выберите нужное Вам расписание занятий:',
-            reply_markup=keyboards.schedule_menu()
+    await callback.message.delete()
+    await callback.message.answer_photo(
+        photo=schedule_image,
+        caption='📚 Выберите нужное Вам расписание занятий:',
+        reply_markup=keyboards.schedule_menu()
+        )
+
+
+@dp.callback_query(F.data == "return_schedule")
+@flags.authorization(is_authorized=True)
+async def return_schedule(callback: types.CallbackQuery):
+    await callback.message.edit_caption(
+        caption='📚 Выберите нужное Вам расписание занятий:',
+        reply_markup=keyboards.schedule_menu()
         )
 
 
 @dp.callback_query(F.data.split()[0] == "send_schedule")
 @flags.authorization(is_authorized=True)
-async def schedule(callback: types.CallbackQuery):
-    async with aiosqlite.connect(server_db_path) as db:
-        async with db.cursor() as cursor:
-            student_code = (await (await cursor.execute(
-                "SELECT student_code FROM users WHERE id = (?)",
-                (callback.from_user.id, )
-            )).fetchone())[0]
-    group = student_code[:-2]
-    with open(f"schedules/schedule_{group}.json", "r", encoding='utf8') as jsonfile:
-        schedule_base = json.load(jsonfile)['Schedule']
-    if callback.data.split()[1] == 'week':
-        date = func.get_week_and_day()
-        week, day = date
-        text = ''
-        for i in schedule_base[week]:
-            text += f"\n{i}:\n"
-            for j in schedule_base[week][i]:
-                teacher_text = ("\n" + j["Teacher"]) if j["Teacher"] else ""
-                text += f'<blockquote>{j["Time"]} | {j["Matter"]}\n{j["Frame"]} корп., {j["Classroom"]} аудит.{teacher_text}</blockquote>\n'
-        await callback.message.delete()
-        await callback.message.answer(
-            f'{text}',
-            reply_markup=keyboards.back_to_schedule(),
-            parse_mode="HTML"
-        )
-    elif callback.data.split()[1] == 'next_week':
-        date = func.get_week_and_day()
-        week, day = date
-        reversing_list = [1, 0]
-        week = reversing_list[week]
-        text = ''
-        for i in schedule_base[week]:
-            text += f"\n{i}:\n"
-            for j in schedule_base[week][i]:
-                teacher_text = ("\n" + j["Teacher"]) if j["Teacher"] else ""
-                text += f'<blockquote>{j["Time"]} | {j["Matter"]}\n{j["Frame"]} корп., {j["Classroom"]} аудит.{teacher_text}</blockquote>\n'
-        await callback.message.delete()
-        await callback.message.answer(
-            f'{text}',
-            reply_markup=keyboards.back_to_schedule(), parse_mode="HTML"
-        )
-    elif callback.data.split()[1] == 'together':
+async def send_schedule(callback: types.CallbackQuery):
+    print(callback.data)
+    if callback.data.split()[1] in ['together', 'tomorrow']:
+        async with aiosqlite.connect(server_db_path) as db:
+            async with db.cursor() as cursor:
+                student_code = (await (await cursor.execute(
+                    "SELECT student_code FROM users WHERE id = (?)",
+                    (callback.from_user.id, )
+                )).fetchone())[0]
+        group = student_code[:-2]
+        with open(f"schedules/schedule_{group}.json", "r", encoding='utf8') as jsonfile:
+            schedule_base = json.load(jsonfile)['Schedule']
+    if callback.data.split()[1] == 'together':
         date = func.get_week_and_day()
         week, day = date
         text = ''
@@ -1108,10 +1084,9 @@ async def schedule(callback: types.CallbackQuery):
                 text += f'<blockquote>{i["Time"]} | {i["Matter"]}\n{i["Frame"]} корп., {i["Classroom"]} аудит.{teacher_text}</blockquote>\n'
         except KeyError:
             text += "Занятий нет 🎉"
-        await callback.message.delete()
-        await callback.message.answer(
-            f'{day}:\n{text}',
-            reply_markup=keyboards.back_to_schedule(), parse_mode="HTML"
+        await callback.message.edit_caption(
+            caption=f'{day}:\n{text}',
+            reply_markup=keyboards.schedule_menu(), parse_mode="HTML"
         )
     elif callback.data.split()[1] == 'tomorrow':
         date = func.get_tomorrow_week_and_day()
@@ -1123,10 +1098,56 @@ async def schedule(callback: types.CallbackQuery):
                 text += f'<blockquote>{i["Time"]} | {i["Matter"]}\n{i["Frame"]} корп., {i["Classroom"]} аудит.{teacher_text}</blockquote>\n'
         except KeyError:
             text += "Занятий нет 🎉"
-        await callback.message.delete()
-        await callback.message.answer(
-            f'{day}:\n{text}',
-            reply_markup=keyboards.back_to_schedule(), parse_mode="HTML"
+        await callback.message.edit_caption(
+            caption=f'{day}:\n{text}',
+            reply_markup=keyboards.schedule_menu(), parse_mode="HTML"
+        )
+    elif callback.data.split()[1] in ['week', 'next_week']:
+        await callback.message.edit_caption(
+                caption='📚 Выберите нужный Вам день недели с расписанием:',
+                reply_markup=keyboards.schedule_menu_other(callback.data.split()[1])
+            )
+        
+
+@dp.callback_query(F.data.split()[0] == "send_schedule_week")
+@flags.authorization(is_authorized=True)
+async def schedule_week(callback: types.CallbackQuery):
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            student_code = (await (await cursor.execute(
+                "SELECT student_code FROM users WHERE id = (?)",
+                (callback.from_user.id, )
+            )).fetchone())[0]
+        group = student_code[:-2]
+        with open(f"schedules/schedule_{group}.json", "r", encoding='utf8') as jsonfile:
+            schedule_base = json.load(jsonfile)['Schedule']
+    if callback.data.split()[2] == 'week':
+        date = func.get_week_and_day()
+        week, day = date
+        day = callback.data.split()[1]
+        text = day+':\n'
+        for i in schedule_base[week][day]:
+            teacher_text = ("\n" + i["Teacher"]) if i["Teacher"] else ""
+            text += f'<blockquote>{i["Time"]} | {i["Matter"]}\n{i["Frame"]} корп., {i["Classroom"]} аудит.{teacher_text}</blockquote>\n'
+        await callback.message.edit_caption(
+            caption=text,
+            reply_markup=keyboards.schedule_menu_other('week'),
+            parse_mode="HTML"
+        )
+    elif callback.data.split()[2] == 'next_week':
+        date = func.get_week_and_day()
+        week, day = date
+        day = callback.data.split()[1]
+        reversing_list = [1, 0]
+        week = reversing_list[week]
+        text = day+':\n'
+        for i in schedule_base[week][day]:
+            teacher_text = ("\n" + i["Teacher"]) if i["Teacher"] else ""
+            text += f'<blockquote>{i["Time"]} | {i["Matter"]}\n{i["Frame"]} корп., {i["Classroom"]} аудит.{teacher_text}</blockquote>\n'
+        await callback.message.edit_caption(
+            caption=text,
+            reply_markup=keyboards.schedule_menu_other('next_week'), 
+            parse_mode="HTML"
         )
 
 
