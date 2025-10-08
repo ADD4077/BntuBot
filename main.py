@@ -1,31 +1,31 @@
 import os
 import sys
 import pytz
-import asyncio
-import aiosqlite
-import datetime
 import json
+import time
+import asyncio
 import hashlib
 import logging
-
-from aiogram.utils.markdown import hlink
-from aiogram.types import ChosenInlineResult, InlineQuery, \
-                          InlineQueryResultArticle, InputTextMessageContent
-from aiogram.fsm.context import FSMContext
-from aiogram import Bot, Dispatcher, types, flags, filters, F
-from aiogram.filters.command import Command
-from aiogram.exceptions import TelegramForbiddenError
-
-from util.StateStorge import SQLiteStorage
-from util import func
-from util.literature_searching import search_literature
-from util import middleware
-from util.states import AutoAuth, AcceptAuthForm, AnonChatState, Form
-from util import states
-from util.config import server_db_path
-from util import keyboards
+import datetime
+import aiosqlite
 
 from dotenv import load_dotenv
+
+from util import func
+from util import states
+from util import keyboards
+from util import middleware
+from util.config import server_db_path
+from util.StateStorge import SQLiteStorage
+from util.literature_searching import search_literature
+from util.states import AutoAuth, AcceptAuthForm, AnonChatState, Form
+
+from aiogram.utils.markdown import hlink
+from aiogram.fsm.context import FSMContext
+from aiogram.filters.command import Command
+from aiogram.exceptions import TelegramForbiddenError
+from aiogram import Bot, Dispatcher, types, flags, filters, F
+from aiogram.types import ChosenInlineResult, InlineQuery, InlineQueryResultArticle, InputTextMessageContent
 
 load_dotenv()
 
@@ -33,6 +33,8 @@ API_TOKEN = os.getenv('TOKEN')
 
 main_menu_image = os.getenv('MAIN_IMAGE')
 schedule_image = os.getenv('SCHEDULE_IMAGE')
+support_image = os.getenv('SUPPORT_IMAGE')
+profile_image = os.getenv('PROFILE_IMAGE')
 example_photo = os.getenv('EXAMPLE_IMAGE')
 map_photo = os.getenv('MAP_IMAGE')
 
@@ -40,9 +42,11 @@ user_owner = os.getenv('USER_OWNER')
 id_owner = int(os.getenv('ID_OWNER'))
 moderators_chat_id = int(os.getenv("MODERATORS_CHAT_ID"))
 
+
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(storage=SQLiteStorage())
 tz = pytz.timezone("Europe/Moscow")
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -70,8 +74,6 @@ def handle_exception(exc_type, exc_value, exc_traceback):
 
 
 sys.excepthook = handle_exception
-# with open('schedule.json', 'r', encoding="utf8") as json_file:
-#     schedule_base = json.load(json_file)
 
 
 with open("passes.json", "r", encoding="utf8") as jsonfile:
@@ -119,9 +121,23 @@ async def chosen_inline_handler(result: ChosenInlineResult):
 @dp.message(Command("start"))
 @flags.authorization(is_authorized=True)
 async def start(message: types.Message):
+    user_id = message.from_user.id
+    if message.text != '/start':
+        refer_id = message.text.replace('/start ', '', 1)
+        if refer_id.isdigit() and str(user_id) != refer_id:
+            async with aiosqlite.connect(server_db_path) as db:
+                async with db.cursor() as cursor:
+                    if (await (await cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))).fetchone()) is None:
+                        if (await (await cursor.execute("SELECT id FROM users WHERE id = ?", (refer_id,))).fetchone()) is not None:
+                            if (await (await cursor.execute("SELECT user_id FROM referals WHERE user_id = ?", (user_id,))).fetchone()) is None:
+                                await cursor.execute(
+                                    "INSERT INTO referals (user_id, refer_id, time) VALUES (?, ?, ?)",
+                                    (user_id, refer_id, time.time())
+                                )
+                await db.commit()
     await message.answer_photo(
             photo=main_menu_image,
-            caption=f"💚 Рады вас видеть, @{message.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
+            caption=f"💚 Рады вас видеть, @{message.from_user.username}!\n\n🧩 Это бот созданный инженерно-педагогическим факультетом, группой прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
             reply_markup=keyboards.main_menu_buttons()
         )
 
@@ -129,24 +145,71 @@ async def start(message: types.Message):
 @dp.callback_query(F.data == "main_menu")
 @flags.authorization(is_authorized=True)
 async def main_menu(callback: types.CallbackQuery):
-    # try:
-    #     await callback.message.edit_caption(
-    #         photo=main_menu_image,
-    #         caption=f"💚 Рады вас видеть, @{callback.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
-    #         reply_markup=keyboards.main_menu_buttons()
-    #     )
-    # except Exception:
-    await callback.message.delete()
+    if await func.safe_delete(callback) is None:
+        return
     await callback.message.answer_photo(
             photo=main_menu_image,
-            caption=f"💚 Рады вас видеть, @{callback.from_user.username}!\n\n🧩 Это бот инженерно-педагогического факультета, группы прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
+            caption=f"💚 Рады вас видеть, @{callback.from_user.username}!\n\n🧩 Это бот созданный от инженерно-педагогическим факультетом, группой прикладного программирования, в котором Вы сможете найти полезную информацию.\n\n📗 Бот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\n🍀 Почему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
             reply_markup=keyboards.main_menu_buttons()
+        )
+
+
+@dp.callback_query(F.data == "profile")
+@flags.authorization(is_authorized=True)
+async def profile(callback: types.CallbackQuery):
+    if await func.safe_delete(callback) is None:
+        return
+    user_id = callback.from_user.id
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            family, name = (await (await cursor.execute("SELECT FullName FROM users WHERE id = ?", (user_id,))).fetchone())[0].split()[:2]
+            faculty = (await (await cursor.execute("SELECT faculty FROM users WHERE id = ?", (user_id,))).fetchone())[0]
+            student_code = (await (await cursor.execute("SELECT student_code FROM users WHERE id = ?", (user_id,))).fetchone())[0]
+    await callback.message.answer_photo(
+            photo=profile_image,
+            caption=f"Имя: {name}\n"
+                    f"Фамилия: {family}\n\n"
+                    f"Факультет: {faculty}\n"
+                    f"Группа: {student_code[:-2]}\n"
+                    f"Курс: {int(student_code[6:-2])-(datetime.datetime.now().year-2001)}\n\n"
+                    f"Номер студ.: {student_code}\n",
+            reply_markup=keyboards.profile_buttons()
+        )
+
+
+@dp.callback_query(F.data == "referal_system")
+@flags.authorization(is_authorized=True)
+async def referal_system(callback: types.CallbackQuery):
+    if await func.safe_delete(callback) is None:
+        return
+    user_id = callback.from_user.id
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            ref_info = (await (await cursor.execute("SELECT refer_id, time FROM referals WHERE user_id = ?", (user_id,))).fetchone())
+            count = len((await (await cursor.execute("SELECT user_id FROM referals WHERE refer_id = ?", (user_id,))).fetchall()))
+            if ref_info is not None:
+                refer_id, timer = ref_info
+                refer = (await (await cursor.execute("SELECT FullName FROM users WHERE id = ?", (refer_id,))).fetchone())[0]
+                dt = datetime.datetime.fromtimestamp(timer)
+                date = dt.strftime("%d.%m.%y %H:%M")
+            else:
+                refer = 'Нет'
+                date = 'Нет'
+    await callback.message.answer_photo(
+            photo=profile_image,
+            caption=f"Приглашено: {count}\n\n"
+                    f"Вас пригласил: {refer}\n"
+                    f"Дата приглашения: {date}\n\n"
+                    f"Ваша ссылка:\n"
+                    f'https://t.me/{(await bot.get_me()).id}?start={user_id}',
+            reply_markup=keyboards.back_to_profile()
         )
 
 
 @dp.callback_query(F.data == "auto_auth")
 async def auto_auth_begin(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.delete()
+    if await func.safe_delete(callback) is None:
+        return
     await callback.message.answer(
         "🧩 Отправьте текстом номер Вашего студенческого билета (чёрный). Без пробелов, лишних символов, запятых и т.д.",
     )
@@ -199,7 +262,8 @@ async def auto_auth_end(message: types.Message, state: FSMContext):
 
 @dp.callback_query(F.data == "support_auth")
 async def auth_begin(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.delete()
+    if await func.safe_delete(callback) is None:
+        return
     await callback.message.answer_photo(
         photo=example_photo,
         caption="📷 Отправьте фото Вашего студенческого билета, чтобы мы могли убедиться в том, что Вы являетесь нашим студентом. Фото должно быть чётким, в хорошем освещении и без бликов.",
@@ -258,7 +322,8 @@ async def accept_auth_2(message: types.Message, state: FSMContext):
 @dp.callback_query(F.data == "anonymous_chat")
 @flags.authorization(is_authorized=True)
 async def anonymous_chat(callback: types.CallbackQuery):
-    await callback.message.delete()
+    if await func.safe_delete(callback) is None:
+        return
     await callback.message.answer(
         text=(
             "🕵🏻‍♂️ Добро пожаловать в анонимный чат БНТУ. "
@@ -1006,7 +1071,8 @@ async def on_chat_edit_message(message: types.Message):
 @dp.callback_query(F.data == "map")
 @flags.authorization(is_authorized=True)
 async def university_map(callback: types.CallbackQuery):
-    await callback.message.delete()
+    if await func.safe_delete(callback) is None:
+        return
     await callback.message.answer_photo(
         photo=map_photo,
         caption='🗺️ Карта мини-городка БНТУ',
@@ -1043,7 +1109,8 @@ async def pass_button(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "schedule")
 @flags.authorization(is_authorized=True)
 async def schedule(callback: types.CallbackQuery):
-    await callback.message.delete()
+    if await func.safe_delete(callback) is None:
+        return
     await callback.message.answer_photo(
         photo=schedule_image,
         caption='📚 Выберите нужное Вам расписание занятий:',
@@ -1153,15 +1220,18 @@ async def schedule_week(callback: types.CallbackQuery):
 
 @dp.callback_query(F.data == "delete")
 async def delete(callback: types.CallbackQuery):
-    await callback.message.delete()
+    if await func.safe_delete(callback) is None:
+        return
 
 
 @dp.callback_query(F.data.split()[0] == "help")
 @flags.authorization(is_authorized=True)
 async def help(callback: types.CallbackQuery):
-    await callback.message.delete()
-    await callback.message.answer(
-        f'Если у Вас есть предложения, идеи или Вы нашли баг, то можете соообщить об этом, мы постараемся как можно быстрее ответить на Ваше сообщение.\n\nОбращаться по юзернейму {user_owner}',
+    if await func.safe_delete(callback) is None:
+        return
+    await callback.message.answer_photo(
+        photo=support_image,
+        caption=f'Если у Вас есть предложения, идеи или Вы нашли баг, то можете соообщить об этом, мы постараемся как можно быстрее ответить на Ваше сообщение.\n\nОбращаться по юзернейму {user_owner}',
         reply_markup=keyboards.help_menu()
     )
 
@@ -1224,6 +1294,11 @@ async def main():
                 student_code TEXT NOT NULL,
                 hired_at DATETIME DEFAULT (datetime('now', 'localtime')),
                 FOREIGN KEY (student_code) REFERENCES users(student_code)
+            )""")
+            await cursor.execute("""CREATE TABLE IF NOT EXISTS referals(
+                user_id INT PRIMARY KEY,
+                refer_id INT NOT NULL,
+                time DATETIME DEFAULT (datetime('now', 'localtime'))
             )""")
 
         await db.commit()

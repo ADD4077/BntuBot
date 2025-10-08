@@ -19,6 +19,19 @@ with open(literature_per_faculty_json_path, "r") as jsonfile:
 requests.packages.urllib3.disable_warnings()
 
 
+async def safe_delete(callback):
+    try:
+        return await callback.message.delete()
+    except TelegramBadRequest as e:
+        err_text = str(e)
+        if "message can't be deleted for everyone" in err_text:
+            await callback.answer('Сообщение устарело! Напишите /start', show_alert=True)
+            return None
+        if "message is not modified" in err_text:
+            return None
+        raise
+
+
 def get_week_and_day(today: Union[None, datetime] = None) -> tuple[int, str]:
     """
     Returns number of week and name of the day as tuple
