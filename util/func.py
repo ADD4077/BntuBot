@@ -336,7 +336,6 @@ def parse_schedule() -> None:
                 )
     return None
 
-
 async def send_message(
     bot, chat_id: int,
     message: types.message.Message,
