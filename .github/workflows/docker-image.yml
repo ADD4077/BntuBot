@@ -1,19 +1,32 @@
-name: Docker Image CI
+name: Build and Push Docker Image
 
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
 
 jobs:
-
-  build:
-
+  build-and-push:
     runs-on: ubuntu-latest
-
+    
     steps:
-    - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag bntu_bot:$(date +%s)
-
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Build Docker image
+      run: |
+        docker build . -t ghcr.io/${{ github.repository }}/bntu_bot:latest
+        # Optional: also tag with commit SHA for versioning
+        docker tag ghcr.io/${{ github.repository }}/bntu_bot:latest \
+                   ghcr.io/${{ github.repository }}/bntu_bot:${{ github.sha }}
+    
+    - name: Push Docker image
+      run: |
+        docker push ghcr.io/${{ github.repository }}/bntu_bot:latest
+        docker push ghcr.io/${{ github.repository }}/bntu_bot:${{ github.sha }}
