@@ -23,12 +23,12 @@ jobs:
       run: |
         # Convert repository name to lowercase
         REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-        docker build . -t ghcr.io/${REPO_NAME}/bntu_bot:latest
-        docker tag ghcr.io/${REPO_NAME}/bntu_bot:latest \
-                   ghcr.io/${REPO_NAME}/bntu_bot:${{ github.sha }}
+        docker build . -t ghcr.io/${REPO_NAME}:latest
+        docker tag ghcr.io/${REPO_NAME}:latest \
+                   ghcr.io/${REPO_NAME}:${{ github.sha }}
     
     - name: Push Docker image
       run: |
         REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-        docker push ghcr.io/${REPO_NAME}/bntu_bot:latest
-        docker push ghcr.io/${REPO_NAME}/bntu_bot:${{ github.sha }}
+        docker push ghcr.io/${REPO_NAME}:latest
+        docker push ghcr.io/${REPO_NAME}:${{ github.sha }}
