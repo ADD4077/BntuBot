@@ -10,12 +10,13 @@ import datetime
 import aiosqlite
 
 from dotenv import load_dotenv
+from pathlib import Path
 
 from util import func
 from util import states
 from util import keyboards
 from util import middleware
-from util.config import server_db_path
+from util.config import server_db_path, base_dir
 from util.StateStorge import SQLiteStorage
 from util.literature_searching import search_literature
 from util.states import AutoAuth, AcceptAuthForm, AnonChatState, Form
@@ -48,12 +49,13 @@ dp = Dispatcher(storage=SQLiteStorage())
 tz = pytz.timezone("Europe/Moscow")
 
 
+os.makedirs("logs", exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="[%(asctime)s] [%(name)s/%(levelname)s]: %(message)s",
     handlers=[
         logging.FileHandler(
-            f"./logs/{__name__}_{datetime.datetime.now(tz).strftime('%d-%m-%Y_%H-%M-%S')}.log",
+            base_dir / "logs" / f"{__name__}_{datetime.datetime.now(tz).strftime('%d-%m-%Y_%H-%M-%S')}.log",
             mode="w"
         ),
         logging.StreamHandler(sys.stdout)
@@ -1262,6 +1264,7 @@ async def add_moderator(message: types.Message, command: Command):
 
 
 async def main():
+    os.makedirs("databases", exist_ok=True)
     async with aiosqlite.connect(server_db_path) as db:
         async with db.cursor() as cursor:
             await cursor.execute("""CREATE TABLE IF NOT EXISTS users(
