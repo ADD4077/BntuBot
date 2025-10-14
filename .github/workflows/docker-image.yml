@@ -21,12 +21,14 @@ jobs:
     
     - name: Build Docker image
       run: |
-        docker build . -t ghcr.io/${{ github.repository }}/bntu_bot:latest
-        # Optional: also tag with commit SHA for versioning
-        docker tag ghcr.io/${{ github.repository }}/bntu_bot:latest \
-                   ghcr.io/${{ github.repository }}/bntu_bot:${{ github.sha }}
+        # Convert repository name to lowercase
+        REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+        docker build . -t ghcr.io/${REPO_NAME}/bntu_bot:latest
+        docker tag ghcr.io/${REPO_NAME}/bntu_bot:latest \
+                   ghcr.io/${REPO_NAME}/bntu_bot:${{ github.sha }}
     
     - name: Push Docker image
       run: |
-        docker push ghcr.io/${{ github.repository }}/bntu_bot:latest
-        docker push ghcr.io/${{ github.repository }}/bntu_bot:${{ github.sha }}
+        REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+        docker push ghcr.io/${REPO_NAME}/bntu_bot:latest
+        docker push ghcr.io/${REPO_NAME}/bntu_bot:${{ github.sha }}
