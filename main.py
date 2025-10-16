@@ -15,7 +15,6 @@ from util import states
 from util import keyboards
 from util import middleware
 from util.config import server_db_path, base_dir
-from util.StateStorge import SQLiteStorage
 from util.literature_searching import search_literature
 from util.states import AutoAuth, AcceptAuthForm, AnonChatState, Form
 
@@ -23,10 +22,13 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.redis import RedisJobStore
 from apscheduler.jobstores.base import JobLookupError, ConflictingIdError
 
+from redis import Redis
+
 from aiogram.utils.markdown import hlink
 from aiogram.fsm.context import FSMContext
 from aiogram.filters.command import Command
 from aiogram.exceptions import TelegramForbiddenError
+from aiogram.fsm.storage.redis import RedisStorage
 from aiogram import Bot, Dispatcher, types, flags, filters, F
 from aiogram.types import (
     ChosenInlineResult,
@@ -52,7 +54,7 @@ moderators_chat_id = int(os.getenv("MODERATORS_CHAT_ID"))
 
 
 bot = Bot(token=API_TOKEN)
-dp = Dispatcher(storage=SQLiteStorage())
+dp = Dispatcher(storage=RedisStorage(Redis(host="redis", port=6378)))
 tz = pytz.timezone("Europe/Moscow")
 
 os.environ["TZ"] = "Europe/Moscow"
