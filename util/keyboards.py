@@ -17,8 +17,19 @@ def profile_buttons():
     builder.button(text="📎 Наш Канал", url="https://t.me/BNTUnity")
     builder.button(text="🌐 Сайт БНТУ", url="https://bntu.by")
     builder.button(text="🛠️ Поддержка", callback_data="help")
+    builder.button(text="Рассылка", callback_data="scheduled_message")
     builder.button(text="⬅️ Назад", callback_data="main_menu")
     builder.adjust(1, 2, 1, 1)
+    return builder.as_markup()
+
+def select_time():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="6:00", callback_data="select_time 8")
+    builder.button(text="12:00", callback_data="select_time 12")
+    builder.button(text="18:00", callback_data="select_time 18")
+    builder.button(text="Отключить", callback_data="select_time -1")
+    builder.button(text="Назад", callback_data="main_menu")
+    builder.adjust(3, 1)
     return builder.as_markup()
 
 def back_to_profile():

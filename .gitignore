@@ -4,3 +4,4 @@ requirements.txt
 *.db-journal
 **/__pycache__
 **/logs
+compose.yaml

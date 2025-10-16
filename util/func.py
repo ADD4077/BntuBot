@@ -1,4 +1,5 @@
 from aiogram.utils.keyboard import InlineKeyboardMarkup
+from aiogram.utils.markdown import text
 from aiogram.utils.media_group import MediaGroupBuilder
 from aiogram import types
 from aiogram.exceptions import TelegramBadRequest
@@ -6,7 +7,7 @@ from aiogram.exceptions import TelegramBadRequest
 from datetime import datetime, timedelta
 
 from typing import Union, Any
-from util.config import server_db_path, literature_per_faculty_json_path
+from util.config import server_db_path, literature_per_faculty_json_path, base_dir
 import aiosqlite
 import requests
 import json
@@ -25,14 +26,18 @@ async def safe_delete(callback):
     except TelegramBadRequest as e:
         err_text = str(e)
         if "message can't be deleted for everyone" in err_text:
-            await callback.answer('Сообщение устарело! Напишите /start', show_alert=True)
+            await callback.answer(
+                "Сообщение устарело! Напишите /start", show_alert=True
+            )
             return None
         if "message is not modified" in err_text:
             return None
         raise
 
 
-def get_week_and_day(today: Union[None, datetime] = None) -> tuple[int, str]:
+def get_week_and_day(
+    today: None | datetime = None, tomorrow: None | bool = None
+) -> tuple[int, str]:
     """
     Returns number of week and name of the day as tuple
     If today variable isnt provided uses datetime.now().date()
@@ -45,6 +50,8 @@ def get_week_and_day(today: Union[None, datetime] = None) -> tuple[int, str]:
     if today < start_date:
         start_date = datetime(today.year - 1, 9, 1).date()
     delta_days = (today - start_date).days
+    if tomorrow:
+        delta_days += 1
     day_of_week_index = delta_days % 7
     week_number = (delta_days // 7) % 2
     days = [
@@ -54,38 +61,41 @@ def get_week_and_day(today: Union[None, datetime] = None) -> tuple[int, str]:
         "Четверг",
         "Пятница",
         "Суббота",
-        "Воскресенье"
+        "Воскресенье",
     ]
     day_name = days[day_of_week_index]
     return week_number, day_name
 
 
-# Better way to do this will be to add tomorrow argument to get_week_and_day
-# Subject to discuss
-def get_tomorrow_week_and_day(today=None):
-    if today is None:
-        today = datetime.now().date()
-    else:
-        if isinstance(today, datetime):
-            today = today.date()
-    tomorrow = today + timedelta(days=1)
-    return get_week_and_day(tomorrow)
+def get_schedule(group: int, week: int, day: str) -> str:
+    group = group[0:8]
+    with open(
+        base_dir / "schedules" / f"schedule_{group}.json", "r", encoding="utf8"
+    ) as jsonfile:
+        schedule_base = json.load(jsonfile)["Schedule"]
+    text = ""
+    try:
+        for i in schedule_base[week][day]:
+            teacher_text = ("\n" + i["Teacher"]) if i["Teacher"] else ""
+            text += f"<blockquote>{i['Time']} | {i['Matter']}\n{i['Frame']} корп., {i['Classroom']} аудит.{teacher_text}</blockquote>\n"
+    except KeyError:
+        text += "Занятий нет 🎉"
+    return text
 
 
 async def auth_send(bot, message):
     b_auth = types.InlineKeyboardButton(
-        text="🔐 Авторизоваться",
-        callback_data="auto_auth"
+        text="🔐 Авторизоваться", callback_data="auto_auth"
     )
     b_privacy = types.InlineKeyboardButton(
         text="Политика конфиденциальности",
-        url="https://telegra.ph/Politika-konfidencialnosti-09-08-51"
+        url="https://telegra.ph/Politika-konfidencialnosti-09-08-51",
     )
     markup = InlineKeyboardMarkup(inline_keyboard=[[b_auth], [b_privacy]])
     await bot.send_message(
         message.from_user.id,
         f'Привет, @{message.from_user.username}!, чтобы использовать бота, нужно авторизоваться c помощью студенческого билета. Для этого нажмите кнопку "Авторизация".',
-        reply_markup=markup
+        reply_markup=markup,
     )
 
 
@@ -106,21 +116,15 @@ async def authorize(login: str, password: str) -> Union[bool, tuple[str, str]]:
                     laravel_session={cookies['laravel_session']}"
     }
 
-    data = {
-        "_token": token,
-        "username": login,
-        "password": password
-    }
+    data = {"_token": token, "username": login, "password": password}
 
     response = session.post(
-        "https://bntu.by/user/auth",
-        headers=headers, data=data, verify=False
+        "https://bntu.by/user/auth", headers=headers, data=data, verify=False
     )
     soup = bs4.BeautifulSoup(response.content, "html.parser")
     if "pay" in response.url:
         fullname = soup.find(
-            "h1",
-            class_="newsName"
+            "h1", class_="newsName"
         ).next_sibling.next_sibling.text.split(",")[1][1:-22]
         info_div = soup.find("div", class_="dashboardInfo")
         for line in info_div.contents:
@@ -159,10 +163,12 @@ def parse_literature() -> None:
             children = collection.find_all(recursive=False)
             link_element = children[0]
             if link_element.find_all("span", recursive=False):
-                link = "https://rep.bntu.by" + link_element["href"] + \
-                       "/browse?rpp=9999&sort_by=1&type=title"
-                collection_title = \
-                    link_element.find_all(recursive=False)[0].text
+                link = (
+                    "https://rep.bntu.by"
+                    + link_element["href"]
+                    + "/browse?rpp=9999&sort_by=1&type=title"
+                )
+                collection_title = link_element.find_all(recursive=False)[0].text
                 literature[collection_title] = {}
                 literature_count = children[1].text
                 literature[collection_title]["count"] = literature_count
@@ -177,31 +183,27 @@ def parse_literature() -> None:
                     literature_link = "https://rep.bntu.by" + a_element["href"]
                     literature[collection_title]["items"][-1]["title"] = title
                     image_element = row.find(
-                        "img",
-                        class_=["img-responsive", "img-thumbnail"]
+                        "img", class_=["img-responsive", "img-thumbnail"]
                     )
                     if image_element.get("src"):
-                        image_link = \
-                            "https://rep.bntu.by" + image_element["src"]
+                        image_link = "https://rep.bntu.by" + image_element["src"]
                     else:
                         image_link = None
-                    literature[collection_title]["items"][-1]["image_url"] = \
-                        image_link
-                    authors = \
-                        row.find(
-                            "span", class_="author"
-                        ).small.find_all("span")
+                    literature[collection_title]["items"][-1]["image_url"] = image_link
+                    authors = row.find("span", class_="author").small.find_all("span")
                     literature[collection_title]["items"][-1]["authors"] = []
                     for author in authors:
-                        literature[collection_title]["items"][-1]["authors"] \
-                            .append(author.text.replace(",", ""))
+                        literature[collection_title]["items"][-1]["authors"].append(
+                            author.text.replace(",", "")
+                        )
                     publishing_date = row.find("span", class_="date").text
-                    literature[collection_title]["items"][-1]["publishing_date"] = \
+                    literature[collection_title]["items"][-1]["publishing_date"] = (
                         publishing_date
-                    description = \
-                        row.find("div", class_="artifact-abstract").text
-                    literature[collection_title]["items"][-1]["description"] = \
+                    )
+                    description = row.find("div", class_="artifact-abstract").text
+                    literature[collection_title]["items"][-1]["description"] = (
                         description
+                    )
                     response = requests.get(literature_link)
                     soup = bs4.BeautifulSoup(response.content, "html.parser")
                     i_element = soup.find("i", class_="glyphicon-file")
@@ -216,24 +218,21 @@ def parse_literature() -> None:
                         filetype = "N/A"
                         download_link = "Not found"
                     literature[collection_title]["items"][-1]["download"]["size"] = size
-                    literature[collection_title]["items"][-1]["download"]["type"] = filetype
-                    literature[collection_title]["items"][-1]["download"]["download_link"] = download_link
+                    literature[collection_title]["items"][-1]["download"]["type"] = (
+                        filetype
+                    )
+                    literature[collection_title]["items"][-1]["download"][
+                        "download_link"
+                    ] = download_link
 
-    with open(
-        "./books/literature.json",
-        "w", encoding="utf8"
-    ) as jsonfile:
+    with open("./books/literature.json", "w", encoding="utf8") as jsonfile:
         json.dump(literature, jsonfile, indent=4, ensure_ascii=False)
     return None
 
 
-replacements = {
-    'Практ': 'Практ.',
-    'Лекц': 'Лекц.',
-    'Лаб': 'Лаб.'
-}
+replacements = {"Практ": "Практ.", "Лекц": "Лекц.", "Лаб": "Лаб."}
 
-pattern = re.compile(r'\(\s*(Практ|Лекц|Лаб)[^)]*\)', re.IGNORECASE)
+pattern = re.compile(r"\(\s*(Практ|Лекц|Лаб)[^)]*\)", re.IGNORECASE)
 
 
 def parse_schedule() -> None:
@@ -241,10 +240,22 @@ def parse_schedule() -> None:
     Parses schedules and saves it into ./schedules/ directory
     """
     faculties = [
-        "atf",  "fgde", "msf",  "mtf",
-        "fmmp", "ef",   "fitr", "ftug",
-        "ipf",  "fes",  "af",   "sf",
-        "psf",  "ftk",  "vtf",  "stf"
+        "atf",
+        "fgde",
+        "msf",
+        "mtf",
+        "fmmp",
+        "ef",
+        "fitr",
+        "ftug",
+        "ipf",
+        "fes",
+        "af",
+        "sf",
+        "psf",
+        "ftk",
+        "vtf",
+        "stf",
     ]
 
     for faculty in faculties:
@@ -256,18 +267,14 @@ def parse_schedule() -> None:
         group_div = soup.find("div", attrs={"id": "group"})
 
         for i in range(len(courses)):
-            select = group_div.find("select", attrs={"name": f"group{i+1}"})
+            select = group_div.find("select", attrs={"name": f"group{i + 1}"})
             for child in select.find_all(recursive=False):
                 if child["value"] != "Номер:":
                     groups.append(child["value"])
 
         for group in groups:
             headers = {"cookie": f"group={group};"}
-            response = requests.get(
-                endpoint+"/table",
-                headers=headers,
-                verify=False
-            )
+            response = requests.get(endpoint + "/table", headers=headers, verify=False)
             soup = bs4.BeautifulSoup(response.content, "html.parser")
             tables = soup.find_all("table", class_="sheduleTable")
             schedule_data = {}
@@ -285,8 +292,7 @@ def parse_schedule() -> None:
                         day_element = row.find("td", class_="newDay")
 
                         if day_element:
-                            day = day_element.text.replace("\n", "")\
-                                                  .replace(" ", "")
+                            day = day_element.text.replace("\n", "").replace(" ", "")
                             schedule_data["Schedule"][week][day] = []
 
                         time_element = row.find("td", class_="time")
@@ -313,35 +319,30 @@ def parse_schedule() -> None:
                                 {
                                     "Time": time,
                                     "Matter": pattern.sub(
-                                        lambda match:
-                                            f"({replacements[match.group(1).capitalize()]})",
-                                        matter
+                                        lambda match: f"({replacements[match.group(1).capitalize()]})",
+                                        matter,
                                     ),
-                                    "Teacher": re.sub(
-                                        r'\s+',
-                                        ' ', teacher
-                                    ).lstrip().rstrip(),
+                                    "Teacher": re.sub(r"\s+", " ", teacher)
+                                    .lstrip()
+                                    .rstrip(),
                                     "Frame": frame,
-                                    "Classroom": classroom
+                                    "Classroom": classroom,
                                 }
                             )
             with open(
                 f"./schedules/schedule_{group}.json", "w", encoding="utf8"
             ) as jsonfile:
-                json.dump(
-                    schedule_data,
-                    jsonfile,
-                    indent=4,
-                    ensure_ascii=False
-                )
+                json.dump(schedule_data, jsonfile, indent=4, ensure_ascii=False)
     return None
 
+
 async def send_message(
-    bot, chat_id: int,
+    bot,
+    chat_id: int,
     message: types.message.Message,
     anon_chat_id: int,
     media_group: Union[Any, None] = None,
-    is_report: Union[bool, None] = None
+    is_report: Union[bool, None] = None,
 ):
     replying = message.reply_to_message
     if replying and not is_report:
@@ -349,21 +350,29 @@ async def send_message(
         async with aiosqlite.connect(server_db_path) as db:
             async with db.cursor() as cursor:
                 if replying.from_user.id != message.from_user.id:
-                    id_for_reply = (await (await cursor.execute(
-                        """SELECT user_message_id FROM messages
+                    id_for_reply = (
+                        await (
+                            await cursor.execute(
+                                """SELECT user_message_id FROM messages
                         WHERE chat_id = ?
                         AND
                         bot_message_id = ?""",
-                        (anon_chat_id, reply_message_id)
-                    )).fetchone())[0]
+                                (anon_chat_id, reply_message_id),
+                            )
+                        ).fetchone()
+                    )[0]
                 else:
-                    id_for_reply = (await (await cursor.execute(
-                        """SELECT bot_message_id FROM messages
+                    id_for_reply = (
+                        await (
+                            await cursor.execute(
+                                """SELECT bot_message_id FROM messages
                         WHERE chat_id = ?
                         AND
                         user_message_id = ?""",
-                        (anon_chat_id, reply_message_id)
-                    )).fetchone())[0]
+                                (anon_chat_id, reply_message_id),
+                            )
+                        ).fetchone()
+                    )[0]
     if media_group:
         caption = media_group[0].caption
         builder = MediaGroupBuilder(caption=caption)
@@ -378,15 +387,12 @@ async def send_message(
             if file:
                 builder.add_document(media=file.file_id)
         if replying:
-            return (await bot.send_media_group(
-                chat_id,
-                media=builder.build(),
-                reply_to_message_id=id_for_reply
-            ))[0]
-        return (await bot.send_media_group(
-            chat_id,
-            media=builder.build()
-        ))[0]
+            return (
+                await bot.send_media_group(
+                    chat_id, media=builder.build(), reply_to_message_id=id_for_reply
+                )
+            )[0]
+        return (await bot.send_media_group(chat_id, media=builder.build()))[0]
     text = message.text
     caption = message.caption
     photos = message.photo
@@ -404,55 +410,35 @@ async def send_message(
         builder.add_document(media=files.file_id)
     if photos or videos or files:
         if replying:
-            return (await bot.send_media_group(
-                chat_id,
-                media=builder.build(),
-                reply_to_message_id=id_for_reply
-            ))[0]
-        return (await bot.send_media_group(
-            chat_id,
-            media=builder.build()
-        ))[0]
+            return (
+                await bot.send_media_group(
+                    chat_id, media=builder.build(), reply_to_message_id=id_for_reply
+                )
+            )[0]
+        return (await bot.send_media_group(chat_id, media=builder.build()))[0]
     if sticker:
         if replying:
             return await bot.send_sticker(
-                chat_id,
-                sticker=sticker.file_id,
-                reply_to_message_id=id_for_reply
+                chat_id, sticker=sticker.file_id, reply_to_message_id=id_for_reply
             )
-        return await bot.send_sticker(
-            chat_id,
-            sticker=sticker.file_id
-        )
+        return await bot.send_sticker(chat_id, sticker=sticker.file_id)
     if voice:
         if replying:
             return await bot.send_voice(
-                chat_id,
-                voice=voice.file_id,
-                reply_to_message_id=id_for_reply
+                chat_id, voice=voice.file_id, reply_to_message_id=id_for_reply
             )
-        return await bot.send_voice(
-            chat_id,
-            voice=voice.file_id
-        )
+        return await bot.send_voice(chat_id, voice=voice.file_id)
     if circle:
         if replying:
             return await bot.send_video_note(
-                chat_id,
-                video_note=circle.file_id,
-                reply_to_message_id=id_for_reply
+                chat_id, video_note=circle.file_id, reply_to_message_id=id_for_reply
             )
-        return await bot.send_video_note(
-            chat_id,
-            video_note=circle.file_id
-        )
+        return await bot.send_video_note(chat_id, video_note=circle.file_id)
     if text:
         if replying:
             try:
                 return await bot.send_message(
-                    chat_id,
-                    text,
-                    reply_to_message_id=id_for_reply
+                    chat_id, text, reply_to_message_id=id_for_reply
                 )
             except TelegramBadRequest as e:
                 if "message to be replied not found" in e.__repr__():
