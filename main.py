@@ -22,7 +22,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.redis import RedisJobStore
 from apscheduler.jobstores.base import JobLookupError, ConflictingIdError
 
-from redis import Redis
+from redis.asyncio import Redis
 
 from aiogram.utils.markdown import hlink
 from aiogram.fsm.context import FSMContext
@@ -54,7 +54,7 @@ moderators_chat_id = int(os.getenv("MODERATORS_CHAT_ID"))
 
 
 bot = Bot(token=API_TOKEN)
-dp = Dispatcher(storage=RedisStorage(Redis(host="redis", port=6378)))
+dp = Dispatcher(storage=RedisStorage(Redis(host="redis", port=6379)))
 tz = pytz.timezone("Europe/Moscow")
 
 os.environ["TZ"] = "Europe/Moscow"
