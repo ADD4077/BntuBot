@@ -243,7 +243,7 @@ async def scheduled_message(callback: types.CallbackQuery):
 
 async def scheduled_schedule(user_id: int, group: int, week: int, day: str):
     text = func.get_schedule(group, week, day)
-    await bot.send_message(user_id, f"{day}:\n{text}")
+    await bot.send_message(user_id, f"{day}:\n{text}", parse_mode="HTML")
 
 
 @dp.callback_query(F.data.split()[0] == "select_time")
