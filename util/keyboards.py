@@ -11,31 +11,35 @@ def main_menu_buttons():
     builder.adjust(2, 2, 1)
     return builder.as_markup()
 
+
 def profile_buttons():
     builder = InlineKeyboardBuilder()
+    builder.button(text="⏰ Рассылка", callback_data="scheduled_message")
     builder.button(text="👥 Реферальная система", callback_data="referal_system")
     builder.button(text="📎 Наш Канал", url="https://t.me/BNTUnity")
     builder.button(text="🌐 Сайт БНТУ", url="https://bntu.by")
     builder.button(text="🛠️ Поддержка", callback_data="help")
-    builder.button(text="Рассылка", callback_data="scheduled_message")
     builder.button(text="⬅️ Назад", callback_data="main_menu")
-    builder.adjust(1, 2, 1, 1)
+    builder.adjust(1, 1, 2, 1, 1)
     return builder.as_markup()
+
 
 def select_time():
     builder = InlineKeyboardBuilder()
-    builder.button(text="6:00", callback_data="select_time 8")
-    builder.button(text="12:00", callback_data="select_time 12")
-    builder.button(text="18:00", callback_data="select_time 18")
-    builder.button(text="Отключить", callback_data="select_time -1")
-    builder.button(text="Назад", callback_data="main_menu")
+    builder.button(text="⏰ 6:00", callback_data="select_time 8")
+    builder.button(text="⏰ 12:00", callback_data="select_time 12")
+    builder.button(text="⏰ 18:00", callback_data="select_time 18")
+    builder.button(text="❌ Отключить", callback_data="select_time -1")
+    builder.button(text="⬅️ Назад", callback_data="main_menu")
     builder.adjust(3, 1)
     return builder.as_markup()
+
 
 def back_to_profile():
     builder = InlineKeyboardBuilder()
     builder.button(text="⬅️ Назад", callback_data="profile")
     return builder.as_markup()
+
 
 def back_to_main():
     builder = InlineKeyboardBuilder()
@@ -60,14 +64,18 @@ def support_auth(user_id: int):
 def anonymous_chat_menu():
     builder = InlineKeyboardBuilder()
     builder.button(text="🔎 Начать поиск", callback_data="search_anonymous_chat")
-    builder.button(text="Правила чата", url="https://telegra.ph/Pravila-Anonimnogo-CHata-09-14")
+    builder.button(
+        text="Правила чата", url="https://telegra.ph/Pravila-Anonimnogo-CHata-09-14"
+    )
     builder.adjust(1, 1)
     return builder.as_markup()
 
 
 def report_menu(reported_user_id: int, sender_id: int):
     builder = InlineKeyboardBuilder()
-    builder.button(text="Забанить нарушителя", callback_data=f"ban_user {reported_user_id}")
+    builder.button(
+        text="Забанить нарушителя", callback_data=f"ban_user {reported_user_id}"
+    )
     builder.button(text="Забанить отправителя", callback_data=f"ban_user {sender_id}")
     return builder.as_markup()
 
@@ -155,6 +163,7 @@ def schedule_menu():
     builder.adjust(2, 2, 1)
     return builder.as_markup()
 
+
 def schedule_menu_other(week):
     builder = InlineKeyboardBuilder()
     builder.button(text="Пн", callback_data=f"send_schedule_week Понедельник {week}")
@@ -167,6 +176,7 @@ def schedule_menu_other(week):
     builder.adjust(3, 3, 1)
     return builder.as_markup()
 
+
 def back_to_schedule():
     builder = InlineKeyboardBuilder()
     builder.button(text="⬅️ Назад", callback_data="schedule")
@@ -175,7 +185,10 @@ def back_to_schedule():
 
 def help_menu():
     builder = InlineKeyboardBuilder()
-    builder.button(text="Политика конфиденциальности", url="https://telegra.ph/Politika-konfidencialnosti-09-08-51")
+    builder.button(
+        text="Политика конфиденциальности",
+        url="https://telegra.ph/Politika-konfidencialnosti-09-08-51",
+    )
     builder.button(text="⬅️ Назад", callback_data="profile")
     builder.adjust(1, 1)
     return builder.as_markup()
