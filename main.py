@@ -20,7 +20,7 @@ from util.states import AutoAuth, AcceptAuthForm, AnonChatState, Form
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.redis import RedisJobStore
-from apscheduler.jobstores.base import JobLookupError, ConflictingIdError
+from apscheduler.jobstores.base import JobLookupError
 
 from redis.asyncio import Redis
 
@@ -47,6 +47,7 @@ support_image = os.getenv("SUPPORT_IMAGE")
 profile_image = os.getenv("PROFILE_IMAGE")
 example_photo = os.getenv("EXAMPLE_IMAGE")
 map_photo = os.getenv("MAP_IMAGE")
+mailing_photo = os.getenv("MAILING_IMAGE")
 
 user_owner = os.getenv("USER_OWNER")
 id_owner = int(os.getenv("ID_OWNER"))
@@ -236,8 +237,21 @@ async def profile(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "scheduled_message")
 @flags.authorization(is_authorized=True)
 async def scheduled_message(callback: types.CallbackQuery):
-    await callback.message.edit_caption(
-        "Выберите время", reply_markup=keyboards.select_time()
+    if not await func.safe_delete(callback):
+        return
+    user_id = callback.from_user.id
+    try:
+        job = scheduler.get_job(str(user_id))
+        if not job:
+            raise JobLookupError(str(user_id))
+        set_hour = job.trigger.fields[5]
+        caption = f"\nВы включили рассылку на {str(set_hour)}:00"
+    except JobLookupError:
+        caption = "После включения рассылки вам будет приходить расписание в выбранное вами время."
+    await callback.message.answer_photo(
+        caption=caption,
+        photo=mailing_photo,
+        reply_markup=keyboards.select_time(),
     )
 
 
@@ -261,23 +275,47 @@ async def select_time(callback: types.CallbackQuery):
                     )
                 ).fetchone()
             )[0]
-            if hour == -1:
-                try:
-                    scheduler.remove_job(str(user_id))
-                    return await callback.answer("Вы отключили рассылку")
-                except JobLookupError:
-                    return await callback.answer("Вы еще не подключали рассылку")
-            try:
-                scheduler.add_job(
-                    scheduled_schedule,
-                    "cron",
-                    hour=hour,
-                    minute=0,
-                    args=[user_id, group, week, day],
-                    id=str(user_id),
-                )
-            except ConflictingIdError:
-                return await callback.answer("Вы уже подключили рассылку")
+    caption = f"\nВы включили рассылку на {hour}:00"
+    try:
+        job = scheduler.get_job(str(user_id))
+        if not job:
+            raise JobLookupError(str(user_id))
+        set_hour = job.trigger.fields[5]
+        if int(str(set_hour)) == hour:
+            return await callback.answer("У вас уже включена рассылка на это время")
+        job.remove()
+        if hour == -1:
+            caption = "После включения рассылки вам будет приходить расписание в выбранное вами время."
+            await callback.message.edit_caption(
+                caption=caption, reply_markup=keyboards.select_time()
+            )
+            return await callback.answer("Вы отключили рассылку")
+        scheduler.add_job(
+            scheduled_schedule,
+            "cron",
+            hour=hour,
+            minute=0,
+            args=[user_id, group, week, day],
+            id=str(user_id),
+        )
+        await callback.message.edit_caption(
+            caption=caption, reply_markup=keyboards.select_time()
+        )
+        return await callback.answer(f"Вы переподключили рассылку на {hour}:00")
+    except JobLookupError:
+        if hour == -1:
+            return await callback.answer("Вы еще не подключали рассылку")
+    scheduler.add_job(
+        scheduled_schedule,
+        "cron",
+        hour=hour,
+        minute=0,
+        args=[user_id, group, week, day],
+        id=str(user_id),
+    )
+    await callback.message.edit_caption(
+        caption=caption, reply_markup=keyboards.select_time()
+    )
     return await callback.answer("Успешно")
 
 

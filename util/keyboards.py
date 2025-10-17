@@ -26,11 +26,11 @@ def profile_buttons():
 
 def select_time():
     builder = InlineKeyboardBuilder()
-    builder.button(text="⏰ 6:00", callback_data="select_time 8")
+    builder.button(text="⏰ 6:00", callback_data="select_time 6")
     builder.button(text="⏰ 12:00", callback_data="select_time 12")
     builder.button(text="⏰ 18:00", callback_data="select_time 18")
     builder.button(text="❌ Отключить", callback_data="select_time -1")
-    builder.button(text="⬅️ Назад", callback_data="main_menu")
+    builder.button(text="⬅️ Назад", callback_data="profile")
     builder.adjust(3, 1)
     return builder.as_markup()
 
