@@ -255,7 +255,8 @@ async def scheduled_message(callback: types.CallbackQuery):
     )
 
 
-async def scheduled_schedule(user_id: int, group: int, week: int, day: str):
+async def scheduled_schedule(user_id: int, group: int):
+    week, day = func.get_week_and_day()
     text = func.get_schedule(group, week, day)
     await bot.send_message(user_id, f"{day}:\n{text}", parse_mode="HTML")
 
@@ -264,7 +265,6 @@ async def scheduled_schedule(user_id: int, group: int, week: int, day: str):
 async def select_time(callback: types.CallbackQuery):
     hour = int(callback.data.split()[1])
     user_id = callback.from_user.id
-    week, day = func.get_week_and_day()
     async with aiosqlite.connect(server_db_path) as db:
         async with db.cursor() as cursor:
             group = (
@@ -295,7 +295,7 @@ async def select_time(callback: types.CallbackQuery):
             "cron",
             hour=hour,
             minute=0,
-            args=[user_id, group, week, day],
+            args=[user_id, group],
             id=str(user_id),
         )
         await callback.message.edit_caption(
@@ -310,7 +310,7 @@ async def select_time(callback: types.CallbackQuery):
         "cron",
         hour=hour,
         minute=0,
-        args=[user_id, group, week, day],
+        args=[user_id, group],
         id=str(user_id),
     )
     await callback.message.edit_caption(
