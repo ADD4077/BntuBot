@@ -1239,6 +1239,48 @@ async def on_chat_edit_message(message: types.Message):
         )
 
 
+@dp.callback_query(F.data == "studsovet")
+@flags.authorization(is_authorized=True)
+async def studsovet(callback: types.CallbackQuery):
+    if await func.safe_delete(callback) is None:
+        return
+    await callback.message.answer_photo(
+        photo=map_photo,
+        caption="Выберите раздел",
+        reply_markup=keyboards.studsovet_buttons(),
+    )
+
+
+@dp.callback_query(F.data == "studsovet_staff_menu")
+@flags.authorization(is_authorized=True)
+async def studsovet_staff_menu(callback: types.CallbackQuery):
+    await callback.message.edit_caption(
+        photo=map_photo,
+        caption="Выберите отдел совета",
+        reply_markup=keyboards.studsovet_staff_menu_buttons(),
+    )
+
+
+@dp.callback_query(F.data == "studsovet_events")
+@flags.authorization(is_authorized=True)
+async def studsovet_events(callback: types.CallbackQuery):
+    await callback.message.edit_caption(
+        photo=map_photo,
+        caption="Мероприятия",
+        reply_markup=keyboards.studsovet_events_buttons(),
+    )
+
+
+@dp.callback_query(F.data == "studsovet_support")
+@flags.authorization(is_authorized=True)
+async def studsovet_support(callback: types.CallbackQuery):
+    await callback.message.edit_caption(
+        photo=map_photo,
+        caption="Выберите тип заявки",
+        reply_markup=keyboards.studsovet_support_buttons(),
+    )
+
+
 @dp.callback_query(F.data == "map")
 @flags.authorization(is_authorized=True)
 async def university_map(callback: types.CallbackQuery):

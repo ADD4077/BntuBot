@@ -5,10 +5,45 @@ def main_menu_buttons():
     builder = InlineKeyboardBuilder()
     builder.button(text="📅 Расписание", callback_data="schedule")
     builder.button(text="📜 Литература", switch_inline_query_current_chat="")
-    builder.button(text="🗺️ Карта", callback_data="map")
-    builder.button(text="🕵🏻‍♂️ Анонимный чат", callback_data="anonymous_chat")
+    builder.button(text="Карта", callback_data="map")
+    builder.button(text="Студсовет", callback_data="studsovet")
     builder.button(text="👤 Профиль", callback_data="profile")
     builder.adjust(2, 2, 1)
+    return builder.as_markup()
+
+
+def studsovet_buttons():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Советы", callback_data="studsovet_staff_menu")
+    builder.button(text="Мероприятия", callback_data="studsovet_events")
+    builder.button(text="Идеи и жалобы", callback_data="studsovet_support")
+    builder.adjust(1, 1, 1)
+    return builder.as_markup()
+
+
+def studsovet_staff_menu_buttons():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Факультетов", callback_data="studsovet_staff_faculty")
+    builder.button(text="Общежитий", callback_data="studsovet_staff_hostel")
+    builder.adjust(1, 1)
+    return builder.as_markup()
+
+
+def studsovet_events_buttons():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="<", callback_data="studsovet_staff_menu")
+    builder.button(text="0/0", callback_data="list")
+    builder.button(text=">", callback_data="studsovet_support")
+    builder.adjust(1, 1, 1)
+    return builder.as_markup()
+
+
+def studsovet_support_buttons():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Советы", callback_data="studsovet_staff_menu")
+    builder.button(text="Мероприятия", callback_data="studsovet_events")
+    builder.button(text="Идеи и жалобы", callback_data="studsovet_support")
+    builder.adjust(1, 1, 1)
     return builder.as_markup()
 
 
