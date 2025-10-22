@@ -40,6 +40,7 @@ from aiogram.types import (
 load_dotenv()
 
 API_TOKEN = os.getenv("TOKEN")
+redis_password = os.getenv("REDIS_PASSWORD")
 
 main_menu_image = os.getenv("MAIN_IMAGE")
 schedule_image = os.getenv("SCHEDULE_IMAGE")
@@ -55,13 +56,13 @@ moderators_chat_id = int(os.getenv("MODERATORS_CHAT_ID"))
 
 
 bot = Bot(token=API_TOKEN)
-dp = Dispatcher(storage=RedisStorage(Redis(host="redis", port=6379)))
+dp = Dispatcher(storage=RedisStorage(Redis(host="redis", port=6379, password=redis_password)))
 tz = pytz.timezone("Europe/Moscow")
 
 os.environ["TZ"] = "Europe/Moscow"
 time.tzset()
 
-jobstores = {"default": RedisJobStore(host="redis", port=6379)}
+jobstores = {"default": RedisJobStore(host="redis", port=6379, password=redis_password)}
 scheduler = AsyncIOScheduler(jobstores=jobstores)
 
 
