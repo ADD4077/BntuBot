@@ -1,10 +1,7 @@
 from aiogram.utils.keyboard import InlineKeyboardMarkup
-from aiogram.utils.markdown import text
 from aiogram.utils.media_group import MediaGroupBuilder
 from aiogram import types
 from aiogram.exceptions import TelegramBadRequest
-
-from datetime import datetime, timedelta
 
 from typing import Union, Any
 from util.config import server_db_path, literature_per_faculty_json_path, base_dir
@@ -334,6 +331,98 @@ def parse_schedule() -> None:
             ) as jsonfile:
                 json.dump(schedule_data, jsonfile, indent=4, ensure_ascii=False)
     return None
+
+
+def parse_student_councils():
+    endpoints = {
+        "faculty": "https://bntu.by/departments/studencheskij-sovet-bntu/pages/studencheskij-sovet-fakultetov-bntu",
+        "hostel": "https://bntu.by/departments/studencheskij-sovet-bntu/pages/studencheskij-sovet-obshezhitij-bntu",
+    }
+
+    student_councils = {}
+    hostel_student_councils = {}
+
+    faculties = [
+        "АТФ",
+        "ФГДИЭ",
+        "МСФ",
+        "МТФ",
+        "ФММП",
+        "ЭФ",
+        "ФИТР",
+        "ФТУГ",
+        "ИПФ",
+        "ФЭС",
+        "АФ",
+        "СФ",
+        "ПСФ",
+        "ФТК",
+        "СТФ",
+        "ФМС",
+    ]
+
+    res = requests.get(endpoints["faculty"], verify=False)
+    print(res.status_code)
+    soup = bs4.BeautifulSoup(res.text, "html.parser")
+    table_div = soup.body.find_all("table")[0]
+    for i, row in enumerate(table_div.find_all("tr")):
+        cells = row.find_all("td")
+        image_url = cells[0].find_next("img").get("src").split("|")[0]
+        name, job_title, *overflow = (
+            element.contents[0] for element in cells[1].find_all("p")
+        )
+        name = name.text
+        job_title = (
+            job_title.get_text(separator=" ")
+            if not overflow
+            else job_title.text + overflow[0].text
+        ).replace("  ", " ")
+        student_councils[faculties[i]] = {}
+        student_councils[faculties[i]]["faculty"] = {
+            "name": name,
+            "job_title": job_title,
+            "image_url": image_url,
+        }
+
+    res = requests.get(endpoints["hostel"], verify=False)
+    soup = bs4.BeautifulSoup(res.text, "html.parser")
+    table_div = soup.body.find_all("table")[0]
+    for i, row in enumerate(table_div.find_all("tr")):
+        cells = row.find_all("td")
+        image_url = None
+        if image_elements := cells[0].find_all("img"):
+            image_url = image_elements[0].get("src").split("|")[0]
+        name = cells[2].find_next("p").text
+        job_title = cells[1].find_next("p").text
+        hostel_student_councils[job_title.split("№")[-1].lstrip()] = {
+            "name": name,
+            "job_title": job_title,
+            "image_url": image_url,
+        }
+    faculty_and_hostel_links = {
+        "АТФ": ["13", "18"],
+        "ФГДИЭ": ["14"],
+        "МСФ": ["6"],
+        "МТФ": ["3"],
+        "ФММП": ["6"],
+        "ЭФ": ["11"],
+        "ФИТР": ["12"],
+        "ФТУГ": ["17"],
+        "ИПФ": ["16"],
+        "ФЭС": ["19"],
+        "АФ": ["19"],
+        "СФ": ["15"],
+        "ПСФ": ["8"],
+        "ФТК": ["17"],
+    }
+    for faculty, hostels in faculty_and_hostel_links.items():
+        student_councils[faculty]["hostels"] = {}
+        for hostel in hostels:
+            student_councils[faculty]["hostels"][hostel] = hostel_student_councils[
+                hostel
+            ]
+    with open("./student_councils/student_council_chairmans.json") as json_file:
+        json.dump(student_councils, json_file)
 
 
 async def send_message(

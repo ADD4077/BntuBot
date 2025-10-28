@@ -1,4 +1,5 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from bs4 import builder
 
 
 def main_menu_buttons():
@@ -23,8 +24,36 @@ def studsovet_buttons():
 
 def studsovet_staff_menu_buttons():
     builder = InlineKeyboardBuilder()
-    builder.button(text="Факультетов", callback_data="studsovet_staff_faculty")
-    builder.button(text="Общежитий", callback_data="studsovet_staff_hostel")
+    builder.button("АТФ", callback_data="student_coucil_staff АТФ")
+    builder.button("ФГДИЭ", callback_data="student_coucil_staff ФГДИЭ")
+    builder.button("МСФ", callback_data="student_coucil_staff МСФ")
+    builder.button("МТФ", callback_data="student_coucil_staff МТФ")
+    builder.button("ФММП", callback_data="student_coucil_staff ФММП")
+    builder.button("ЭФ", callback_data="student_coucil_staff ЭФ")
+    builder.button("ФИТР", callback_data="student_coucil_staff ФИТР")
+    builder.button("ФТУГ", callback_data="student_coucil_staff ФТУГ")
+    builder.button("ИПФ", callback_data="student_coucil_staff ИПФ")
+    builder.button("ФЭС", callback_data="student_coucil_staff ФЭС")
+    builder.button("АФ", callback_data="student_coucil_staff АФ")
+    builder.button("СФ", callback_data="student_coucil_staff СФ")
+    builder.button("ПСФ", callback_data="student_coucil_staff ПСФ")
+    builder.button("ФТК", callback_data="student_coucil_staff ФТК")
+    builder.button("СТФ", callback_data="student_coucil_staff СТФ")
+    builder.button("ФМС", callback_data="student_coucil_staff ФМС")
+    builder.adjust(4, 4, 4, 4)
+    return builder.as_markup()
+
+
+def choose_staff_type(faculty):
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        f"Председатель студсовета {faculty}",
+        callback_data=f"faculty_student_council {faculty}",
+    )
+    builder.button(
+        f"Председатели студсоветов общежитий {faculty}",
+        callback_data=f"hostel_student_council {faculty}",
+    )
     builder.adjust(1, 1)
     return builder.as_markup()
 

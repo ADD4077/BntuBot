@@ -52,6 +52,7 @@ mailing_photo = os.getenv("MAILING_IMAGE")
 user_owner = os.getenv("USER_OWNER")
 id_owner = int(os.getenv("ID_OWNER"))
 moderators_chat_id = int(os.getenv("MODERATORS_CHAT_ID"))
+support_chat_id = int(os.getenv("SUPPORT_CHAT_ID"))
 
 
 bot = Bot(token=API_TOKEN)
@@ -255,10 +256,21 @@ async def scheduled_message(callback: types.CallbackQuery):
     )
 
 
+async def delete_message(user_id: int, message_id: int):
+    await bot.delete_message(user_id, message_id)
+
+
 async def scheduled_schedule(user_id: int, group: int):
     week, day = func.get_week_and_day()
     text = func.get_schedule(group, week, day)
-    await bot.send_message(user_id, f"{day}:\n{text}", parse_mode="HTML")
+    message = await bot.send_message(user_id, f"{day}:\n{text}", parse_mode="HTML")
+    scheduler.add_job(
+        delete_message,
+        "date",
+        run_date=datetime.datetime.now() + datetime.timedelta(hours=24),
+        args=[user_id, message.message_id],
+        id=f"{user_id}-{message.message_id}",
+    )
 
 
 @dp.callback_query(F.data.split()[0] == "select_time")
