@@ -1,0 +1,232 @@
+{
+    "АТФ": {
+        "faculty": {
+            "name": "Смирнова Марина Андреевна",
+            "job_title": "Председатель студенческого совета автотракторного факультета",
+            "image_url": "https://static.bntu.by/bntu/new/content/content_d692cbac6d812a800dc40353542b12f0.jpeg"
+        },
+        "hostels": {
+            "13": {
+                "name": "Воронко Иван Сергеевич ",
+                "job_title": "Председатель студенческого совета общежития №13",
+                "image_url": "https://static.bntu.by/bntu/new/content/content_e249ade79003f5387598e30dfc54e08a.jpeg"
+            }
+        }
+    },
+    "ФГДИЭ": {
+        "faculty": {
+            "name": "Бажко Ярослав Александрович",
+            "job_title": "Председатель студенческого совета факультета горного дела и  инженерной экологии",
+            "image_url": "https://static.bntu.by/bntu/new/content/content_68b1889b887f993f578bbc80e33fa169.jpeg"
+        },
+        "hostels": {
+            "14": {
+                "name": "Кривенький Арсений Сергеевич",
+                "job_title": "Председатель студенческого совета общежития № 14",
+                "image_url": "https://static.bntu.by/bntu/new/content/content_99d584a43efa17dcaff1e6a7ecdf3cc8.jpeg"
+            }
+        }
+    },
+    "МСФ": {
+        "faculty": {
+            "name": "Мишкова Елизавета Романовна",
+            "job_title": "Председатель студенческого совета машиностроительного факультета",
+            "image_url": "https://static.bntu.by/bntu/new/content/content_075663b07f86e7531ad1d78d364c89fc.jpeg"
+        },
+        "hostels": {
+            "6": {
+                "name": "Белян Наталья Александровна",
+                "job_title": "Председатель студенческого совета общежития № 6",
+                "image_url": "https://static.bntu.by/bntu/new/content/content_71c52692281ffb92d229391443d37117.jpeg"
+            }
+        }
+    },
+    "МТФ": {
+        "faculty": {
+            "name": "Кубарский Никита Витальевич",
+            "job_title": "Председатель студенческого совета механико-технологического факультета",
+            "image_url": "https://static.bntu.by/bntu/new/content/content_027cffb688115d8aad74527943142680.jpeg"
+        },
+        "hostels": {
+            "3": {
+                "name": "Панасюк Владимир Олегович",
+                "job_title": "Председатель студенческого совета общежития № 3",
+                "image_url": null
+            }
+        }
+    },
+    "ФММП": {
+        "faculty": {
+            "name": "Сподо Владислав Павлович",
+            "job_title": "Председатель студенческого совета факультета маркетинга, менеджмента, предпринимательства",
+            "image_url": "https://static.bntu.by/bntu/new/content/content_2527ae5f17b4d00d1d36b85364a8951c.jpeg"
+        },
+        "hostels": {
+            "6": {
+                "name": "Белян Наталья Александровна",
+                "job_title": "Председатель студенческого совета общежития № 6",
+                "image_url": "https://static.bntu.by/bntu/new/content/content_71c52692281ffb92d229391443d37117.jpeg"
+            }
+        }
+    },
+    "ЭФ": {
+        "faculty": {
+            "name": "Василец Илья Александрович",
+            "job_title": "Председатель студенческого совета энергетического факультета",
+            "image_url": "https://static.bntu.by/bntu/new/content/content_de65a8af1f38566ae1c7d88c57ae2fe4.jpeg"
+        },
+        "hostels": {
+            "9": {
+                "name": "Бердовский Даниил Валерьевич",
+                "job_title": "Председатель студенческого совета общежития № 9",
+                "image_url": "https://static.bntu.by/bntu/new/content/content_f8a056893e434bf2ca620facd3325124.jpeg"
+            },
+            "11": {
+                "name": "Осовец Сергей Валентинович",
+                "job_title": "Председатель студенческого совета общежития № 11",
+                "image_url": "https://static.bntu.by/bntu/new/content/content_b1fbc6a17b96eff181353d5806a4e0de.jpeg"
+            }
+        }
+    },
+    "ФИТР": {
+        "faculty": {
+            "name": "Кваченюк Глеб Владимирович",
+            "job_title": "Председатель студенческого совета факультета информационных технологий и робототехники",
+            "image_url": "https://static.bntu.by/bntu/new/content/content_30468e9b34fdc67a825d8768276bb44c.jpeg"
+        },
+        "hostels": {
+            "12": {
+                "name": "Киянко Максим Витальевич",
+                "job_title": "Председатель студенческого совета общежития №12",
+                "image_url": "https://static.bntu.by/bntu/new/content/content_fd21fda8cd3bae922a4b02ffc5a5e66e.jpeg"
+            },
+            "15": {
+                "name": "Заболоцкая Ульяна Сергеевна",
+                "job_title": "Председатель студенческого совета общежития № 15",
+                "image_url": "https://static.bntu.by/bntu/new/content/content_204260b0dcb13cfb7b82740c9056c2d4.jpeg"
+            },
+            "18": {
+                "name": "Апанасович Александр Иванович ",
+                "job_title": "Председатель студенческого совета общежития №18",
+                "image_url": null
+            }
+        }
+    },
+    "ФТУГ": {
+        "faculty": {
+            "name": "Коробкова Елизавета Олеговна ",
+            "job_title": "Председатель студенческого совета факультета технологий управления и гуманитаризации",
+            "image_url": "https://static.bntu.by/bntu/new/content/content_cc1860e731be2f2a874eb199727a204a.jpeg"
+        },
+        "hostels": {
+            "17": {
+                "name": "Кель Анастасия Александровна",
+                "job_title": "Председатель студенческого совета общежития №17",
+                "image_url": "https://static.bntu.by/bntu/new/content/content_a7d8bf507cbef53a4b6f3d63b1f22ab4.jpeg"
+            }
+        }
+    },
+    "ИПФ": {
+        "faculty": {
+            "name": "Самусева Варвара Дмитриевна",
+            "job_title": "Председатель студенческого совета инженерно-педагогического факультета",
+            "image_url": "https://static.bntu.by/bntu/new/content/content_9a42aab906f2cf744ae087e381e49009.jpeg"
+        },
+        "hostels": {
+            "16": {
+                "name": "Адотик Елизавета Ивановна",
+                "job_title": "Председатель студенческого совета общежития №16",
+                "image_url": "https://static.bntu.by/bntu/new/content/content_1336f272fe43e53846453cebf6b0b19f.jpeg"
+            }
+        }
+    },
+    "ФЭС": {
+        "faculty": {
+            "name": "Величко Дарья Руслановна ",
+            "job_title": "Председатель студенческого совета факультета энергетического строительства",
+            "image_url": "https://static.bntu.by/bntu/new/content/content_b1dc290821c6a889f5204904fcd69d84.jpeg"
+        },
+        "hostels": {
+            "15": {
+                "name": "Заболоцкая Ульяна Сергеевна",
+                "job_title": "Председатель студенческого совета общежития № 15",
+                "image_url": "https://static.bntu.by/bntu/new/content/content_204260b0dcb13cfb7b82740c9056c2d4.jpeg"
+            },
+            "19": {
+                "name": "Кичёва Дарья Николаевна",
+                "job_title": "Председатель студенческого совета общежития №19",
+                "image_url": "https://static.bntu.by/bntu/new/content/content_30eeb0b1ace9d845f5d7f5a9e28cf9af.jpeg"
+            }
+        }
+    },
+    "АФ": {
+        "faculty": {
+            "name": "Терешко Ангелина Юрьевна",
+            "job_title": "Председатель студенческого совета архитектурного факультета",
+            "image_url": "https://static.bntu.by/bntu/new/content/content_bc80e05c8bf44f2b148afb27372bcae5.jpeg"
+        },
+        "hostels": {
+            "16": {
+                "name": "Адотик Елизавета Ивановна",
+                "job_title": "Председатель студенческого совета общежития №16",
+                "image_url": "https://static.bntu.by/bntu/new/content/content_1336f272fe43e53846453cebf6b0b19f.jpeg"
+            }
+        }
+    },
+    "СФ": {
+        "faculty": {
+            "name": "Красковская Мария Алексеевна",
+            "job_title": "Председатель студенческого совета строительного факультета",
+            "image_url": "https://static.bntu.by/bntu/new/content/content_28b1d69f7aa0483904d676e2e35544d3.jpeg"
+        },
+        "hostels": {
+            "15": {
+                "name": "Заболоцкая Ульяна Сергеевна",
+                "job_title": "Председатель студенческого совета общежития № 15",
+                "image_url": "https://static.bntu.by/bntu/new/content/content_204260b0dcb13cfb7b82740c9056c2d4.jpeg"
+            }
+        }
+    },
+    "ПСФ": {
+        "faculty": {
+            "name": "Кротова Анастасия Сергеевна",
+            "job_title": "Председатель студенческого совета приборостроительного факультета",
+            "image_url": "https://static.bntu.by/bntu/new/content/content_6b8d68a0470647e5416733cf3fa01f0f.jpeg"
+        },
+        "hostels": {
+            "8": {
+                "name": "Самсонов Илья Николаевич",
+                "job_title": "Председатель студенческого совета общежития № 8",
+                "image_url": "https://static.bntu.by/bntu/new/content/content_0bf0c81ef85e9e781b7f1fa481b3a000.jpeg"
+            }
+        }
+    },
+    "ФТК": {
+        "faculty": {
+            "name": "Поплавская Елизавета Юрьевна",
+            "job_title": "Председатель студенческого совета факультета транспортных коммуникаций",
+            "image_url": "https://static.bntu.by/bntu/new/content/content_e97fa7fd710c44c7a51f113b452d9cc3.jpeg"
+        },
+        "hostels": {
+            "17": {
+                "name": "Кель Анастасия Александровна",
+                "job_title": "Председатель студенческого совета общежития №17",
+                "image_url": "https://static.bntu.by/bntu/new/content/content_a7d8bf507cbef53a4b6f3d63b1f22ab4.jpeg"
+            }
+        }
+    },
+    "СТФ": {
+        "faculty": {
+            "name": "Бекар Екатерина Евгеньевна",
+            "job_title": "Председатель студенческого совета спортивно-технического факультета",
+            "image_url": "https://static.bntu.by/bntu/new/content/content_fd5210df0a7babdf4fcef0ff346131e9.jpeg"
+        }
+    },
+    "ФМС": {
+        "faculty": {
+            "name": "Хохлова Полина Андреевна",
+            "job_title": "Председатель студенческого совета Факультета международного сотрудничества",
+            "image_url": "https://static.bntu.by/bntu/new/content/content_c9143f6ac392545dafa50369cd40a92e.jpeg"
+        }
+    }
+}

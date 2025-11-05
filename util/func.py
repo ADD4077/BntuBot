@@ -10,6 +10,7 @@ import requests
 import json
 import bs4
 import re
+from datetime import datetime
 
 with open(literature_per_faculty_json_path, "r") as jsonfile:
     literature_per_faculty = json.load(jsonfile)
@@ -400,17 +401,17 @@ def parse_student_councils():
             "image_url": image_url,
         }
     faculty_and_hostel_links = {
-        "АТФ": ["13", "18"],
+        "АТФ": ["13"],
         "ФГДИЭ": ["14"],
         "МСФ": ["6"],
         "МТФ": ["3"],
         "ФММП": ["6"],
-        "ЭФ": ["11"],
-        "ФИТР": ["12"],
+        "ЭФ": ["9", "11"],
+        "ФИТР": ["12", "15", "18"],
         "ФТУГ": ["17"],
         "ИПФ": ["16"],
-        "ФЭС": ["19"],
-        "АФ": ["19"],
+        "ФЭС": ["15", "19"],
+        "АФ": ["16"],
         "СФ": ["15"],
         "ПСФ": ["8"],
         "ФТК": ["17"],
@@ -421,8 +422,8 @@ def parse_student_councils():
             student_councils[faculty]["hostels"][hostel] = hostel_student_councils[
                 hostel
             ]
-    with open("./student_councils/student_council_chairmans.json") as json_file:
-        json.dump(student_councils, json_file)
+    with open("./student_councils/student_council_chairmans.json", 'w', encoding='utf-8') as json_file:
+        json.dump(student_councils, json_file, indent=4, ensure_ascii=False)
 
 
 async def send_message(

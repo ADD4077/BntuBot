@@ -40,3 +40,6 @@ class InputMessageForUser(StatesGroup):
 class InputMessageForGroup(StatesGroup):
     group_id = State()
     message = State()
+    
+class InputStudsovetReport(StatesGroup):
+    category = State()

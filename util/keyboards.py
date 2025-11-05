@@ -1,78 +1,98 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bs4 import builder
+import json
 
 
 def main_menu_buttons():
     builder = InlineKeyboardBuilder()
+    builder.button(text="🎓 Студсовет", callback_data="studsovet")
     builder.button(text="📅 Расписание", callback_data="schedule")
     builder.button(text="📜 Литература", switch_inline_query_current_chat="")
-    builder.button(text="Карта", callback_data="map")
-    builder.button(text="Студсовет", callback_data="studsovet")
+    builder.button(text="🗺 Карта", callback_data="map")
     builder.button(text="👤 Профиль", callback_data="profile")
-    builder.adjust(2, 2, 1)
+    builder.adjust(1, 2, 2)
     return builder.as_markup()
 
 
 def studsovet_buttons():
     builder = InlineKeyboardBuilder()
-    builder.button(text="Советы", callback_data="studsovet_staff_menu")
-    builder.button(text="Мероприятия", callback_data="studsovet_events")
-    builder.button(text="Идеи и жалобы", callback_data="studsovet_support")
-    builder.adjust(1, 1, 1)
+    builder.button(text="💼 Советы", callback_data="studsovet_staff_menu")
+    builder.button(text="🍻 Мероприятия", callback_data="studsovet_events")
+    builder.button(text="💡 Идеи и жалобы", callback_data="studsovet_support")
+    builder.button(text="⬅️ Назад", callback_data="main_menu")
+    builder.adjust(1, 1, 1, 1)
     return builder.as_markup()
 
 
 def studsovet_staff_menu_buttons():
     builder = InlineKeyboardBuilder()
-    builder.button("АТФ", callback_data="student_coucil_staff АТФ")
-    builder.button("ФГДИЭ", callback_data="student_coucil_staff ФГДИЭ")
-    builder.button("МСФ", callback_data="student_coucil_staff МСФ")
-    builder.button("МТФ", callback_data="student_coucil_staff МТФ")
-    builder.button("ФММП", callback_data="student_coucil_staff ФММП")
-    builder.button("ЭФ", callback_data="student_coucil_staff ЭФ")
-    builder.button("ФИТР", callback_data="student_coucil_staff ФИТР")
-    builder.button("ФТУГ", callback_data="student_coucil_staff ФТУГ")
-    builder.button("ИПФ", callback_data="student_coucil_staff ИПФ")
-    builder.button("ФЭС", callback_data="student_coucil_staff ФЭС")
-    builder.button("АФ", callback_data="student_coucil_staff АФ")
-    builder.button("СФ", callback_data="student_coucil_staff СФ")
-    builder.button("ПСФ", callback_data="student_coucil_staff ПСФ")
-    builder.button("ФТК", callback_data="student_coucil_staff ФТК")
-    builder.button("СТФ", callback_data="student_coucil_staff СТФ")
-    builder.button("ФМС", callback_data="student_coucil_staff ФМС")
-    builder.adjust(4, 4, 4, 4)
+    builder.button(text="АТФ", callback_data="student_coucil_staff АТФ")
+    builder.button(text="ФГДИЭ", callback_data="student_coucil_staff ФГДИЭ")
+    builder.button(text="МСФ", callback_data="student_coucil_staff МСФ")
+    builder.button(text="МТФ", callback_data="student_coucil_staff МТФ")
+    builder.button(text="ФММП", callback_data="student_coucil_staff ФММП")
+    builder.button(text="ЭФ", callback_data="student_coucil_staff ЭФ")
+    builder.button(text="ФИТР", callback_data="student_coucil_staff ФИТР")
+    builder.button(text="ФТУГ", callback_data="student_coucil_staff ФТУГ")
+    builder.button(text="ИПФ", callback_data="student_coucil_staff ИПФ")
+    builder.button(text="ФЭС", callback_data="student_coucil_staff ФЭС")
+    builder.button(text="АФ", callback_data="student_coucil_staff АФ")
+    builder.button(text="СФ", callback_data="student_coucil_staff СФ")
+    builder.button(text="ПСФ", callback_data="student_coucil_staff ПСФ")
+    builder.button(text="ФТК", callback_data="student_coucil_staff ФТК")
+    builder.button(text="СТФ", callback_data="student_coucil_staff СТФ")
+    builder.button(text="ФМС", callback_data="student_coucil_staff ФМС")
+    builder.button(text="⬅️ Назад", callback_data="studsovet return")
+    builder.adjust(4, 4, 4, 4, 1)
     return builder.as_markup()
 
 
-def choose_staff_type(faculty):
+def student_coucil_staff_create(faculty):
+    with open(f"student_councils/student_council_chairmans.json", "r", encoding="utf8") as jsonfile:
+        concil = json.load(jsonfile)[faculty]
     builder = InlineKeyboardBuilder()
     builder.button(
-        f"Председатель студсовета {faculty}",
+        text=f"📖 Студсовет {faculty}",
         callback_data=f"faculty_student_council {faculty}",
     )
-    builder.button(
-        f"Председатели студсоветов общежитий {faculty}",
-        callback_data=f"hostel_student_council {faculty}",
-    )
+    if 'hostels' in concil.keys():
+        for hostel in concil['hostels'].keys():
+            builder.button(
+                text=f"🏠 Студсовет общежития {hostel}",
+                callback_data=f"hostel_student_council {faculty} {hostel}",
+            )
+    builder.button(text="⬅️ Назад", callback_data="studsovet_staff_menu")
     builder.adjust(1, 1)
     return builder.as_markup()
 
 
-def studsovet_events_buttons():
+def faculty_student_council_return(faculty):
     builder = InlineKeyboardBuilder()
-    builder.button(text="<", callback_data="studsovet_staff_menu")
-    builder.button(text="0/0", callback_data="list")
-    builder.button(text=">", callback_data="studsovet_support")
-    builder.adjust(1, 1, 1)
+    builder.button(text="⬅️ Назад", callback_data=f"student_coucil_staff {faculty} return")
+    builder.adjust(1)
     return builder.as_markup()
 
 
-def studsovet_support_buttons():
+def studsovet_events_buttons(page, count):
     builder = InlineKeyboardBuilder()
-    builder.button(text="Советы", callback_data="studsovet_staff_menu")
-    builder.button(text="Мероприятия", callback_data="studsovet_events")
-    builder.button(text="Идеи и жалобы", callback_data="studsovet_support")
-    builder.adjust(1, 1, 1)
+    builder.button(text="⏪", callback_data="studsovet_events_begin")
+    builder.button(text="◀️", callback_data="studsovet_events_back")
+    builder.button(text=f"{page+1}/{count}", callback_data=f"page {page}")
+    builder.button(text="▶️", callback_data="studsovet_events_next")
+    builder.button(text="⏩", callback_data="studsovet_events_end")
+    builder.button(text="⬅️ Назад", callback_data="studsovet")
+    builder.adjust(5, 1)
+    return builder.as_markup()
+
+
+def studsovet_support_choice_buttons():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="📚 Учебный процесс", callback_data="stud_support Учебный процесс")
+    builder.button(text="👨‍🏫 Преподаватели", callback_data="stud_support Преподаватели")
+    builder.button(text="🏠 Общежитие", callback_data="stud_support Общежитие")
+    builder.button(text="📝 Другое...", callback_data="stud_support Другое")
+    builder.button(text="⬅️ Назад", callback_data="studsovet return")
+    builder.adjust(1, 1, 1, 1, 1)
     return builder.as_markup()
 
 
