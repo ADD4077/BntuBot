@@ -14,7 +14,7 @@ from util import func
 from util import states
 from util import keyboards
 from util import middleware
-from util.config import server_db_path, base_dir
+from util.config import server_db_path, base_dir, events_path
 from util.literature_searching import search_literature
 from util.states import AutoAuth, AcceptAuthForm, AnonChatState, Form
 
@@ -34,12 +34,11 @@ from aiogram.types import (
     ChosenInlineResult,
     InlineQuery,
     InlineQueryResultArticle,
-    InputTextMessageContent
+    InputTextMessageContent,
 )
 
 load_dotenv()
 
-print('aaaa'.split())
 
 API_TOKEN = os.getenv("TOKEN")
 
@@ -647,6 +646,94 @@ async def admin_panel_by_callback(callback: types.CallbackQuery, state: FSMConte
     await admin_panel(callback, state)
 
 
+@dp.callback_query(F.data.split()[0] == "add_event")
+@flags.owner(is_owner=True)
+@flags.permissions(any_permission=True)
+@flags.authorization(is_authorized=True)
+async def search_user(callback: types.CallbackQuery, state: FSMContext):
+    args = callback.data.split()
+    if len(args) == 1:
+        return await callback.message.edit_text(
+            "Выберите какое мероприятие вы хотите добавить:",
+            reply_markup=keyboards.choose_event_type(),
+        )
+    event_type = args[1]
+    await state.clear()
+    await state.update_data(event_type=event_type)
+    await state.set_state(states.InputEventData.name)
+    return await callback.message.edit_text("Введите название мероприятия.")
+
+
+@dp.message(states.InputEventData.name)
+async def input_event_name(message: types.Message, state: FSMContext):
+    await state.set_state(states.InputEventData.date)
+    await state.update_data(name=message.text)
+    return await message.answer("Введи дату мероприятия в формате дд.мм.гггг чч:мм")
+
+
+@dp.message(states.InputEventData.date)
+async def input_event_date(message: types.Message, state: FSMContext):
+    timestamp = datetime.datetime.strptime(message.text, "%d.%m.%Y %H:%M").timestamp()
+    await state.update_data(date=str(int(timestamp)))
+    await state.set_state(states.InputEventData.description)
+    return await message.answer("Введите описание мероприятия.")
+
+
+@dp.message(states.InputEventData.description)
+async def input_event_description(message: types.Message, state: FSMContext):
+    await state.set_state(states.InputEventData.contacts)
+    await state.update_data(description=message.text)
+    return await message.answer(
+        "Введите контакты организаторов мероприятия. Каждый контакт с новой строки."
+    )
+
+
+@dp.message(states.InputEventData.contacts)
+async def input_event_contacts(message: types.Message, state: FSMContext):
+    await state.set_state(states.InputEventData.members)
+    await state.update_data(contacts=message.text.split("\n"))
+    return await message.answer(
+        "Введите участников мероприятия. Каждый участник с новой строки."
+    )
+
+
+@dp.message(states.InputEventData.members)
+async def input_event_members(message: types.Message, state: FSMContext):
+    await state.set_state(states.InputEventData.image)
+    await state.update_data(members=message.text.split("\n"))
+    return await message.answer("Введите ссылку на фото для мероприятия.")
+
+
+@dp.message(states.InputEventData.image)
+async def input_event_image(message: types.Message, state: FSMContext):
+    await state.update_data(image=message.text)
+    data = await state.get_data()
+    await state.clear()
+    event_type = data["event_type"]
+    name = data["name"]
+    date = data["date"]
+    description = data["description"]
+    contacts = data["contacts"]
+    members = data["members"]
+    image = data["image"]
+    if event_type == "bntu":
+        filename = "bntu_events.json"
+    elif event_type == "studsovet":
+        filename = "stud_events.json"
+    with open(events_path / filename, "r", encoding="utf8") as jsonfile:
+        events = json.load(jsonfile)
+    events[name] = {
+        "date": int(date),
+        "description": description,
+        "contacts": contacts,
+        "members": members,
+        "images": image,
+    }
+    with open(events_path / filename, "w", encoding="utf8") as jsonfile:
+        json.dump(events, jsonfile, ensure_ascii=False)
+    return message.answer("Мероприятие добавлено.")
+
+
 @dp.callback_query(F.data == "search_user")
 @flags.owner(is_owner=True)
 @flags.permissions(any_permission=True)
@@ -1250,17 +1337,17 @@ async def on_chat_edit_message(message: types.Message):
         await bot.edit_message_caption(
             caption=message.caption + "\n\n(Ред.)",
             chat_id=user2_id,
-            message_id=id_to_edit
+            message_id=id_to_edit,
         )
 
 
 @dp.callback_query(F.data.split()[0] == "studsovet")
 @flags.authorization(is_authorized=True)
 async def studsovet(callback: types.CallbackQuery):
-    if  'return' in callback.data:
+    if "return" in callback.data:
         await callback.message.edit_caption(
             caption="🎓 Студенческий совет БНТУ – молодёжная структура, деятельность которой направлена на поддержку и реализацию студенческих инициатив, взаимодействие от имени представителей обучающихся с руководством БНТУ, совместное решение вопросов жизнедеятельности студенческой молодёжи и помощи в реализации личностного потенциала в различных направлениях.",
-            reply_markup=keyboards.studsovet_buttons()
+            reply_markup=keyboards.studsovet_buttons(),
         )
     else:
         if await func.safe_delete(callback) is None:
@@ -1268,7 +1355,7 @@ async def studsovet(callback: types.CallbackQuery):
         await callback.message.answer_photo(
             photo=studsovet_photo,
             caption="🎓 Студенческий совет БНТУ – молодёжная структура, деятельность которой направлена на поддержку и реализацию студенческих инициатив, взаимодействие от имени представителей обучающихся с руководством БНТУ, совместное решение вопросов жизнедеятельности студенческой молодёжи и помощи в реализации личностного потенциала в различных направлениях.",
-            reply_markup=keyboards.studsovet_buttons()
+            reply_markup=keyboards.studsovet_buttons(),
         )
 
 
@@ -1278,114 +1365,41 @@ async def studsovet_staff_menu(callback: types.CallbackQuery):
     await callback.message.edit_caption(
         photo=studsovet_photo,
         caption="🧩 Выберите факультет, студенческий совет которого Вас интересует, для получения информации о председателях факультетов и общежитий:",
-        reply_markup=keyboards.studsovet_staff_menu_buttons()
+        reply_markup=keyboards.studsovet_staff_menu_buttons(),
     )
 
 
-@dp.callback_query(F.data == "studsovet_events")
+@dp.callback_query(F.data.split()[0] == "events")
 @dp.callback_query(F.data == "studsovet_events_begin")
 @flags.authorization(is_authorized=True)
 async def studsovet_events(callback: types.CallbackQuery):
-    with open(f"student_events/stud_events.json", "r", encoding="utf8") as jsonfile:
-        events = json.load(jsonfile)
-    event_name = list(events)[0]
-    event = events[event_name]
-    if await func.safe_delete(callback) is None:
-            return
-    if event['images']:
-        await callback.message.answer_photo(
-            photo=event['images'],
-            caption=f"🎉 {event_name}\n\n📃 Описание:\n{event['description']}\n\n⏳ Дата: {datetime.datetime.fromtimestamp(event['date']).strftime('%Y.%m.%d %H:%M')}\n\n👥 Записано: {len(event['members'])}",
-            reply_markup=keyboards.studsovet_events_buttons(0, len(events))
-        )
+    args = callback.data.split()
+    event_type = args[1]
+    page = args[2]
+    if event_type == "bntu":
+        filename = "bntu_events.json"
+    elif event_type == "studsovet":
+        filename = "stud_events.json"
     else:
-        await callback.message.answer_photo(
-            photo=studsovet_photo,
-            caption=f"🎉 {event_name}\n\n📃 Описание:\n{event['description']}\n\n⏳ Дата: {datetime.datetime.fromtimestamp(event['date']).strftime('%Y.%m.%d %H:%M')}\n\n👥 Записано: {len(event['members'])}",
-            reply_markup=keyboards.studsovet_events_buttons(0, len(events))
-        )
-
-
-@dp.callback_query(F.data == "studsovet_events_back")
-@flags.authorization(is_authorized=True)
-async def studsovet_events_back(callback: types.CallbackQuery):
-    with open(f"student_events/stud_events.json", "r", encoding="utf8") as jsonfile:
+        raise NotImplementedError("unknown event type")
+    with open(events_path / filename, "r", encoding="utf8") as jsonfile:
         events = json.load(jsonfile)
-    for i in callback.message.reply_markup.inline_keyboard[0]:
-        if i.callback_data.split()[0] == 'page':
-            page = int(i.callback_data.split()[1])
-    if page == 0:
-        return await callback.answer('Начало списка', show_alert=True)
-    page-=1
-    event_name = list(events)[page]
-    event = events[event_name]
-    images = event['images']
-    if await func.safe_delete(callback) is None:
-            return
-    if event['images']:
-        await callback.message.answer_photo(
-            photo=event['images'],
-            caption=f"🎉 {event_name}\n\n📃 Описание:\n{event['description']}\n\n⏳ Дата: {datetime.datetime.fromtimestamp(event['date']).strftime('%Y.%m.%d %H:%M')}\n\n👥 Записано: {len(event['members'])}",
-            reply_markup=keyboards.studsovet_events_buttons(page, len(events))
-        )
-    else:
-        await callback.message.answer_photo(
-            photo=studsovet_photo,
-            caption=f"🎉 {event_name}\n\n📃 Описание:\n{event['description']}\n\n⏳ Дата: {datetime.datetime.fromtimestamp(event['date']).strftime('%Y.%m.%d %H:%M')}\n\n👥 Записано: {len(event['members'])}",
-            reply_markup=keyboards.studsovet_events_buttons(page, len(events))
-        )
-
-
-@dp.callback_query(F.data == "studsovet_events_next")
-@flags.authorization(is_authorized=True)
-async def studsovet_events_next(callback: types.CallbackQuery):
-    with open(f"student_events/stud_events.json", "r", encoding="utf8") as jsonfile:
-        events = json.load(jsonfile)
-    for i in callback.message.reply_markup.inline_keyboard[0]:
-        if i.callback_data.split()[0] == 'page':
-            page = int(i.callback_data.split()[1])+1
-            print(page, page-1, page+1)
-    if page >= len(events):
-        return await callback.answer('Конец списка', show_alert=True)
-    event_name = list(events)[page]
-    event = events[event_name]
-    images = event['images']
-    if await func.safe_delete(callback) is None:
-        return
-    if event['images']:
-        await callback.message.answer_photo(
-            photo=event['images'],
-            caption=f"🎉 {event_name}\n\n📃 Описание:\n{event['description']}\n\n⏳ Дата: {datetime.datetime.fromtimestamp(event['date']).strftime('%Y.%m.%d %H:%M')}\n\n👥 Записано: {len(event['members'])}",
-            reply_markup=keyboards.studsovet_events_buttons(page, len(events))
-        )
-    else:
-        await callback.message.answer_photo(
-            photo=studsovet_photo,
-            caption=f"🎉 {event_name}\n\n📃 Описание:\n{event['description']}\n\n⏳ Дата: {datetime.datetime.fromtimestamp(event['date']).strftime('%Y.%m.%d %H:%M')}\n\n👥 Записано: {len(event['members'])}",
-            reply_markup=keyboards.studsovet_events_buttons(page, len(events))
-        )
-
-
-@dp.callback_query(F.data == "studsovet_events_end")
-@flags.authorization(is_authorized=True)
-async def studsovet_events_end(callback: types.CallbackQuery):
-    with open(f"student_events/stud_events.json", "r", encoding="utf8") as jsonfile:
-        events = json.load(jsonfile)
-    event_name = list(events)[len(events)-1]
+    events_count = len(events.keys())
+    event_name = list(events.keys())[int(page) - 1]
     event = events[event_name]
     if await func.safe_delete(callback) is None:
         return
-    if event['images']:
+    if event["images"]:
         await callback.message.answer_photo(
-            photo=event['images'],
-            caption=f"🎉 {event_name}\n\n📃 Описание:\n{event['description']}\n\nДата: {datetime.datetime.fromtimestamp(event['date']).strftime('%Y.%m.%d %H:%M')}\n\n👥 Записано: {len(event['members'])}",
-            reply_markup=keyboards.studsovet_events_buttons(len(events)-1, len(events))
+            photo=event["images"],
+            caption=f"🎉 {event_name}\n\n📃 Описание:\n{event['description']}\n\n⏳ Дата: {datetime.datetime.fromtimestamp(event['date']).strftime('%Y.%m.%d %H:%M')}\n\n👥 Записано: {len(event['members'])}",
+            reply_markup=keyboards.events_buttons(event_type, page, events_count),
         )
     else:
         await callback.message.answer_photo(
             photo=studsovet_photo,
-            caption=f"🎉 {event_name}\n\n📃 Описание:\n{event['description']}\n\nДата: {datetime.datetime.fromtimestamp(event['date']).strftime('%Y.%m.%d %H:%M')}\n\n👥 Записано: {len(event['members'])}",
-            reply_markup=keyboards.studsovet_events_buttons(len(events)-1, len(events))
+            caption=f"🎉 {event_name}\n\n📃 Описание:\n{event['description']}\n\n⏳ Дата: {datetime.datetime.fromtimestamp(event['date']).strftime('%Y.%m.%d %H:%M')}\n\n👥 Записано: {len(event['members'])}",
+            reply_markup=keyboards.events_buttons(event_type, page, events_count),
         )
 
 
@@ -1394,7 +1408,7 @@ async def studsovet_events_end(callback: types.CallbackQuery):
 async def studsovet_support(callback: types.CallbackQuery):
     await callback.message.edit_caption(
         caption="📌 Выберите интересующий Вас раздел подачи заявки с идеей или жалобой:",
-        reply_markup=keyboards.studsovet_support_choice_buttons()
+        reply_markup=keyboards.studsovet_support_choice_buttons(),
     )
 
 
@@ -1404,10 +1418,10 @@ async def stud_support(callback: types.CallbackQuery, state: FSMContext):
     if await func.safe_delete(callback) is None:
         return
     await callback.message.answer(
-        f'🧩 Отправьте Ваше сообщение с идеей или жалобой по разделу "{callback.data.split(' ', 1)[1]}":'
+        f'🧩 Отправьте Ваше сообщение с идеей или жалобой по разделу "{callback.data.split(" ", 1)[1]}":'
     )
     await state.set_state(states.InputStudsovetReport.category)
-    await state.update_data(category=callback.data.split(' ', 1)[1])
+    await state.update_data(category=callback.data.split(" ", 1)[1])
 
 
 @dp.message(states.InputStudsovetReport.category)
@@ -1416,9 +1430,9 @@ async def auto_auth_end(message: types.Message, state: FSMContext):
     category = data.get("category")
     await bot.send_message(
         chat_id=studsovet_chat_id,
-        text=f"⚠️ Заявка от {"@"+message.from_user.username if message.from_user.username else message.from_user.full_name}\n\n"  
-                f"🗂 Раздел: {category}\n\n"   
-                f"📃 Содержание:\n{message.text}"
+        text=f"⚠️ Заявка от {'@' + message.from_user.username if message.from_user.username else message.from_user.full_name}\n\n"
+        f"🗂 Раздел: {category}\n\n"
+        f"📃 Содержание:\n{message.text}",
     )
     await message.answer(
         "✅ Ваше сообщение было отправлено в студсовет, при необходимости мы свяжемся с Вами. Спасибо!",
@@ -1429,47 +1443,57 @@ async def auto_auth_end(message: types.Message, state: FSMContext):
 @dp.callback_query(F.data.split()[0] == "student_coucil_staff")
 @flags.authorization(is_authorized=True)
 async def student_coucil_staff(callback: types.CallbackQuery):
-    if 'return' in callback.data:
+    if "return" in callback.data:
         if await func.safe_delete(callback) is None:
             return
         await callback.message.answer_photo(
             photo=studsovet_photo,
             caption=f"{callback.data.split()[1]}",
-            reply_markup=keyboards.student_coucil_staff_create(callback.data.split()[1])
+            reply_markup=keyboards.student_coucil_staff_create(
+                callback.data.split()[1]
+            ),
         )
     else:
         await callback.message.edit_caption(
             caption=f"{callback.data.split()[1]}",
-            reply_markup=keyboards.student_coucil_staff_create(callback.data.split()[1])
+            reply_markup=keyboards.student_coucil_staff_create(
+                callback.data.split()[1]
+            ),
         )
 
 
 @dp.callback_query(F.data.split()[0] == "faculty_student_council")
 @flags.authorization(is_authorized=True)
 async def faculty_student_council(callback: types.CallbackQuery):
-    with open(f"student_councils/student_council_chairmans.json", "r", encoding="utf8") as jsonfile:
+    with open(
+        f"student_councils/student_council_chairmans.json", "r", encoding="utf8"
+    ) as jsonfile:
         concil = json.load(jsonfile)[callback.data.split()[1]]
     if await func.safe_delete(callback) is None:
         return
     await callback.message.answer_photo(
-        photo=concil['faculty']['image_url'],
-        caption=f'{concil['faculty']['name']}\n\n{concil['faculty']['job_title']}',
-        reply_markup=keyboards.faculty_student_council_return(callback.data.split()[1])
+        photo=concil["faculty"]["image_url"],
+        caption=f"{concil['faculty']['name']}\n\n{concil['faculty']['job_title']}",
+        reply_markup=keyboards.faculty_student_council_return(callback.data.split()[1]),
     )
 
 
 @dp.callback_query(F.data.split()[0] == "hostel_student_council")
 @flags.authorization(is_authorized=True)
 async def hostel_student_council(callback: types.CallbackQuery):
-    with open(f"student_councils/student_council_chairmans.json", "r", encoding="utf8") as jsonfile:
+    with open(
+        f"student_councils/student_council_chairmans.json", "r", encoding="utf8"
+    ) as jsonfile:
         print([callback.data.split()[1], callback.data.split()[2]])
-        concil = json.load(jsonfile)[callback.data.split()[1]]['hostels'][callback.data.split()[2]]
+        concil = json.load(jsonfile)[callback.data.split()[1]]["hostels"][
+            callback.data.split()[2]
+        ]
     if await func.safe_delete(callback) is None:
         return
     await callback.message.answer_photo(
-        photo=concil['image_url'],
-        caption=f'{concil['name']}\n\n{concil['job_title']}',
-        reply_markup=keyboards.faculty_student_council_return(callback.data.split()[1])
+        photo=concil["image_url"],
+        caption=f"{concil['name']}\n\n{concil['job_title']}",
+        reply_markup=keyboards.faculty_student_council_return(callback.data.split()[1]),
     )
 
 
@@ -1481,7 +1505,7 @@ async def university_map(callback: types.CallbackQuery):
     await callback.message.answer_photo(
         photo=map_photo,
         caption="🗺️ Карта мини-городка БНТУ",
-        reply_markup=keyboards.map_menu()
+        reply_markup=keyboards.map_menu(),
     )
 
 
@@ -1494,7 +1518,7 @@ async def passes_button(callback: types.CallbackQuery):
         passes.append(b)
     await callback.message.edit_caption(
         caption="📗 Выберите нужный Вам предмет:",
-        reply_markup=keyboards.passes_menu(passes)
+        reply_markup=keyboards.passes_menu(passes),
     )
 
 
@@ -1515,7 +1539,7 @@ async def schedule(callback: types.CallbackQuery):
     await callback.message.answer_photo(
         photo=schedule_image,
         caption="📚 Выберите нужное Вам расписание занятий:",
-        reply_markup=keyboards.schedule_menu()
+        reply_markup=keyboards.schedule_menu(),
     )
 
 
@@ -1524,7 +1548,7 @@ async def schedule(callback: types.CallbackQuery):
 async def return_schedule(callback: types.CallbackQuery):
     await callback.message.edit_caption(
         caption="📚 Выберите нужное Вам расписание занятий:",
-        reply_markup=keyboards.schedule_menu()
+        reply_markup=keyboards.schedule_menu(),
     )
 
 
@@ -1534,7 +1558,7 @@ async def send_schedule(callback: types.CallbackQuery):
     if callback.data.split()[1] in ["week", "next_week"]:
         return await callback.message.edit_caption(
             caption="📚 Выберите нужный Вам день недели с расписанием:",
-            reply_markup=keyboards.schedule_menu_other(callback.data.split()[1])
+            reply_markup=keyboards.schedule_menu_other(callback.data.split()[1]),
         )
     async with aiosqlite.connect(server_db_path) as db:
         async with db.cursor() as cursor:
@@ -1542,7 +1566,7 @@ async def send_schedule(callback: types.CallbackQuery):
                 await (
                     await cursor.execute(
                         "SELECT student_code FROM users WHERE id = (?)",
-                        (callback.from_user.id,)
+                        (callback.from_user.id,),
                     )
                 ).fetchone()
             )[0]

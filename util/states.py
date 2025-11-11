@@ -36,10 +36,23 @@ class InputFaculty(StatesGroup):
 class InputMessageForUser(StatesGroup):
     user_id = State()
     message = State()
-    
+
+
 class InputMessageForGroup(StatesGroup):
     group_id = State()
     message = State()
-    
+
+
 class InputStudsovetReport(StatesGroup):
     category = State()
+
+
+class InputEventData(StatesGroup):
+    event_type = State()
+    name = State()
+    date = State()
+    description = State()
+    contacts = State()
+    members = State()
+    image = State()
+

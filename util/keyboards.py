@@ -1,6 +1,5 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from bs4 import builder
-import json
+from magic_filter.operations import call
 
 
 def main_menu_buttons():
@@ -17,10 +16,29 @@ def main_menu_buttons():
 def studsovet_buttons():
     builder = InlineKeyboardBuilder()
     builder.button(text="💼 Советы", callback_data="studsovet_staff_menu")
-    builder.button(text="🍻 Мероприятия", callback_data="studsovet_events")
+    builder.button(text="🍻 Мероприятия БНТУ", callback_data="events bntu 1")
+    builder.button(text="🍻 Мероприятия", callback_data="events studsovet 1")
     builder.button(text="💡 Идеи и жалобы", callback_data="studsovet_support")
     builder.button(text="⬅️ Назад", callback_data="main_menu")
-    builder.adjust(1, 1, 1, 1)
+    builder.adjust(1, 1, 1, 1, 1)
+    return builder.as_markup()
+
+
+def events_buttons(event_type, page, count):
+    builder = InlineKeyboardBuilder()
+    page = int(page)
+    builder.button(text="⏪", callback_data=f"events {event_type} 1")
+    builder.button(
+        text="◀️", callback_data=f"events {event_type} {page - 1 if page != 1 else 1}"
+    )
+    builder.button(text=f"{page}/{count}", callback_data=f"page {page}")
+    builder.button(
+        text="▶️",
+        callback_data=f"events {event_type} {page + 1 if page != count else page}",
+    )
+    builder.button(text="⏩", callback_data=f"events {event_type} {count}")
+    builder.button(text="⬅️ Назад", callback_data="studsovet")
+    builder.adjust(5, 1)
     return builder.as_markup()
 
 
@@ -48,15 +66,17 @@ def studsovet_staff_menu_buttons():
 
 
 def student_coucil_staff_create(faculty):
-    with open(f"student_councils/student_council_chairmans.json", "r", encoding="utf8") as jsonfile:
+    with open(
+        f"student_councils/student_council_chairmans.json", "r", encoding="utf8"
+    ) as jsonfile:
         concil = json.load(jsonfile)[faculty]
     builder = InlineKeyboardBuilder()
     builder.button(
         text=f"📖 Студсовет {faculty}",
         callback_data=f"faculty_student_council {faculty}",
     )
-    if 'hostels' in concil.keys():
-        for hostel in concil['hostels'].keys():
+    if "hostels" in concil.keys():
+        for hostel in concil["hostels"].keys():
             builder.button(
                 text=f"🏠 Студсовет общежития {hostel}",
                 callback_data=f"hostel_student_council {faculty} {hostel}",
@@ -68,27 +88,21 @@ def student_coucil_staff_create(faculty):
 
 def faculty_student_council_return(faculty):
     builder = InlineKeyboardBuilder()
-    builder.button(text="⬅️ Назад", callback_data=f"student_coucil_staff {faculty} return")
+    builder.button(
+        text="⬅️ Назад", callback_data=f"student_coucil_staff {faculty} return"
+    )
     builder.adjust(1)
-    return builder.as_markup()
-
-
-def studsovet_events_buttons(page, count):
-    builder = InlineKeyboardBuilder()
-    builder.button(text="⏪", callback_data="studsovet_events_begin")
-    builder.button(text="◀️", callback_data="studsovet_events_back")
-    builder.button(text=f"{page+1}/{count}", callback_data=f"page {page}")
-    builder.button(text="▶️", callback_data="studsovet_events_next")
-    builder.button(text="⏩", callback_data="studsovet_events_end")
-    builder.button(text="⬅️ Назад", callback_data="studsovet")
-    builder.adjust(5, 1)
     return builder.as_markup()
 
 
 def studsovet_support_choice_buttons():
     builder = InlineKeyboardBuilder()
-    builder.button(text="📚 Учебный процесс", callback_data="stud_support Учебный процесс")
-    builder.button(text="👨‍🏫 Преподаватели", callback_data="stud_support Преподаватели")
+    builder.button(
+        text="📚 Учебный процесс", callback_data="stud_support Учебный процесс"
+    )
+    builder.button(
+        text="👨‍🏫 Преподаватели", callback_data="stud_support Преподаватели"
+    )
     builder.button(text="🏠 Общежитие", callback_data="stud_support Общежитие")
     builder.button(text="📝 Другое...", callback_data="stud_support Другое")
     builder.button(text="⬅️ Назад", callback_data="studsovet return")
@@ -166,12 +180,21 @@ def report_menu(reported_user_id: int, sender_id: int):
 
 def admin_panel_menu():
     builder = InlineKeyboardBuilder()
+    builder.button(text="Добавить мероприятие", callback_data="add_event")
     builder.button(text="Поиск пользователя", callback_data="search_user")
     builder.button(text="Поиск группы", callback_data="search_group")
     builder.button(text="Поиск факультета", callback_data="search_faculty")
     builder.button(text="Расписание", callback_data="admin_schedule")
     builder.button(text="Литература", callback_data="admin_literature")
-    builder.adjust(1, 1, 1, 2)
+    builder.adjust(1, 1, 1, 1, 2)
+    return builder.as_markup()
+
+
+def choose_event_type():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Мероприятие БНТУ", callback_data="add_event bntu")
+    builder.button(text="Мероприятие студсовета", callback_data="add_event studsovet")
+    builder.adjust(1, 1)
     return builder.as_markup()
 
 

@@ -1,0 +1,51 @@
+{
+    "Мероприятие 1": {
+        "date": 1762011164,
+        "description": "Интересное мероприятие БНТУ",
+        "contacts": [],
+        "members": [],
+        "images": "https://exlibris.ru/wp-content/uploads/2019/07/7-PR-instrumentov-dlya-prodvizheniya-vashego-meropriyatiya.jpg"
+    },
+    "Мероприятие 2": {
+        "date": 1762011164,
+        "description": "Не очень интересное мероприятие БНТУ",
+        "contacts": [],
+        "members": [],
+        "images": "https://monomax.ru/wp-content/uploads/2017/03/i-4.jpg"
+    },
+    "Мероприятие 3": {
+        "date": 1762011164,
+        "description": "Ыыыыыыыы мероприятие БНТУ",
+        "contacts": [],
+        "members": [],
+        "images": "https://mb-ar.ru/ckeditor/images/913-7c0e7c6e2ad56bc2fe47ab230d326567.jpg"
+    },
+    "Мероприятие 4": {
+        "date": 1762011164,
+        "description": "Это мероприятие БНТУ",
+        "contacts": [],
+        "members": [],
+        "images": ""
+    },
+    "Мероприятие 5": {
+        "date": 1762011164,
+        "description": "Мероприятие БНТУ?",
+        "contacts": [],
+        "members": [],
+        "images": ""
+    },
+    "Мероприятие 6": {
+        "date": 1762011164,
+        "description": "Интересное мероприятие БНТУ",
+        "contacts": [],
+        "members": [],
+        "images": ""
+    },
+    "Мероприятие 7": {
+        "date": 1762011164,
+        "description": "Интересное мероприятие БНТУ",
+        "contacts": [],
+        "members": [],
+        "images": ""
+    }
+}
