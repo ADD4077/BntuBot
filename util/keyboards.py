@@ -1,5 +1,5 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from magic_filter.operations import call
+import json
 
 
 def main_menu_buttons():
