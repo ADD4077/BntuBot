@@ -14,7 +14,7 @@ from util import func
 from util import states
 from util import keyboards
 from util import middleware
-from util.config import server_db_path, base_dir, events_path
+from util.config import server_db_path, base_dir
 from util.literature_searching import search_literature
 from util.states import AutoAuth, AcceptAuthForm, AnonChatState, Form
 
@@ -716,21 +716,26 @@ async def input_event_image(message: types.Message, state: FSMContext):
     contacts = data["contacts"]
     members = data["members"]
     image = data["image"]
-    if event_type == "bntu":
-        filename = "bntu_events.json"
-    elif event_type == "studsovet":
-        filename = "stud_events.json"
-    with open(events_path / filename, "r", encoding="utf8") as jsonfile:
-        events = json.load(jsonfile)
-    events[name] = {
-        "date": int(date),
-        "description": description,
-        "contacts": contacts,
-        "members": members,
-        "images": image,
-    }
-    with open(events_path / filename, "w", encoding="utf8") as jsonfile:
-        json.dump(events, jsonfile, ensure_ascii=False)
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            res = await cursor.execute(
+                "INSERT INTO events (type, name, date, description, image_url) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (event_type, name, int(date), description, image),
+            )
+            await db.commit()
+            event_id = res.lastrowid
+            for contact in contacts:
+                await cursor.execute(
+                    "INSERT INTO event_contacts (event_id, contact) VALUES (?, ?)",
+                    (event_id, contact),
+                )
+            for member in members:
+                await cursor.execute(
+                    "INSERT INTO event_members (event_id, member) VALUES (?, ?)",
+                    (event_id, member),
+                )
+            await db.commit()
     return message.answer("Мероприятие добавлено.")
 
 
@@ -1373,17 +1378,43 @@ async def studsovet_staff_menu(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "studsovet_events_begin")
 @flags.authorization(is_authorized=True)
 async def studsovet_events(callback: types.CallbackQuery):
+    is_owner = callback.from_user.id == id_owner
     args = callback.data.split()
     event_type = args[1]
     page = args[2]
-    if event_type == "bntu":
-        filename = "bntu_events.json"
-    elif event_type == "studsovet":
-        filename = "stud_events.json"
-    else:
-        raise NotImplementedError("unknown event type")
-    with open(events_path / filename, "r", encoding="utf8") as jsonfile:
-        events = json.load(jsonfile)
+    events = {}
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            res = await (
+                await cursor.execute(
+                    "SELECT id, name, date, description, image_url FROM events WHERE type = (?)",
+                    (event_type,),
+                )
+            ).fetchall()
+            if not res:
+                return callback.message.answer("Мероприятий нет")
+            for event in res:
+                event_id = event[0]
+                contacts = await (
+                    await cursor.execute(
+                        "SELECT contact FROM event_contacts WHERE event_id = (?)",
+                        (event_id,),
+                    )
+                ).fetchall()
+                members = await (
+                    await cursor.execute(
+                        "SELECT member FROM event_members WHERE event_id = (?)",
+                        (event_id,),
+                    )
+                ).fetchall()
+                events[event[1]] = {
+                    "date": event[2],
+                    "description": event[3],
+                    "contacts": [contact[0] for contact in contacts],
+                    "members": [member[0] for member in members],
+                    "images": event[4],
+                    "event_id": event_id,
+                }
     events_count = len(events.keys())
     event_name = list(events.keys())[int(page) - 1]
     event = events[event_name]
@@ -1393,14 +1424,39 @@ async def studsovet_events(callback: types.CallbackQuery):
         await callback.message.answer_photo(
             photo=event["images"],
             caption=f"🎉 {event_name}\n\n📃 Описание:\n{event['description']}\n\n⏳ Дата: {datetime.datetime.fromtimestamp(event['date']).strftime('%Y.%m.%d %H:%M')}\n\n👥 Записано: {len(event['members'])}",
-            reply_markup=keyboards.events_buttons(event_type, page, events_count),
+            reply_markup=keyboards.events_buttons(
+                event_type, page, events_count, is_owner, event_id
+            ),
         )
     else:
         await callback.message.answer_photo(
             photo=studsovet_photo,
             caption=f"🎉 {event_name}\n\n📃 Описание:\n{event['description']}\n\n⏳ Дата: {datetime.datetime.fromtimestamp(event['date']).strftime('%Y.%m.%d %H:%M')}\n\n👥 Записано: {len(event['members'])}",
-            reply_markup=keyboards.events_buttons(event_type, page, events_count),
+            reply_markup=keyboards.events_buttons(
+                event_type, page, events_count, is_owner, event_id
+            ),
         )
+
+
+@dp.callback_query(F.data.split()[0] == "delete_event")
+async def delete_event(callback: types.CallbackQuery):
+    event_id = int(callback.data.split()[1])
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            await cursor.execute("DELETE FROM events WHERE id = (?)", (event_id,))
+            await cursor.execute(
+                "DELETE FROM event_members WHERE event_id = (?)", (event_id,)
+            )
+            await cursor.execute(
+                "DELETE FROM event_contacts WHERE event_id = (?)", (event_id,)
+            )
+        await db.commit()
+    await callback.message.answer("Мероприятие удалено")
+
+
+@dp.callback_query(F.data.split()[0] == "edit_event")
+async def edit_event(callback: types.CallbackQuery):
+    raise NotImplementedError("Бля отвечаю братка потом сделаю")
 
 
 @dp.callback_query(F.data == "studsovet_support")
@@ -1690,6 +1746,26 @@ async def main():
                 user_id INT PRIMARY KEY,
                 refer_id INT NOT NULL,
                 time DATETIME DEFAULT (datetime('now', 'localtime'))
+            )""")
+            await cursor.execute("""CREATE TABLE IF NOT EXISTS events(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                type TEXT NOT NULL,
+                name TEXT NOT NULL,
+                date INT NOT NULL,
+                description TEXT NOT NULL,
+                image_url TEXT NOT NULL
+            )""")
+            await cursor.execute("""CREATE TABLE IF NOT EXISTS event_contacts(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id INT NOT NULL,
+                contact TEXT NOT NULL,
+                FOREIGN KEY (event_id) REFERENCES events(id)
+            )""")
+            await cursor.execute("""CREATE TABLE IF NOT EXISTS event_members(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id INT NOT NULL,
+                member TEXT NOT NULL,
+                FOREIGN KEY (event_id) REFERENCES events(id)
             )""")
 
         await db.commit()

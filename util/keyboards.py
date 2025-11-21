@@ -24,7 +24,7 @@ def studsovet_buttons():
     return builder.as_markup()
 
 
-def events_buttons(event_type, page, count):
+def events_buttons(event_type, page, count, is_owner, event_id):
     builder = InlineKeyboardBuilder()
     page = int(page)
     builder.button(text="⏪", callback_data=f"events {event_type} 1")
@@ -38,6 +38,15 @@ def events_buttons(event_type, page, count):
     )
     builder.button(text="⏩", callback_data=f"events {event_type} {count}")
     builder.button(text="⬅️ Назад", callback_data="studsovet")
+    if is_owner:
+        builder.button(
+            text="Удалить мероприятие", callback_data=f"delete_event {event_id}"
+        )
+        builder.button(
+            text="Редактировать мероприятие", callback_data=f"edit_event {event_id}"
+        )
+        builder.adjust(5, 1, 1, 1)
+        return builder.as_markup()
     builder.adjust(5, 1)
     return builder.as_markup()
 

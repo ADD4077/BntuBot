@@ -14,14 +14,13 @@ import os
 from util.config import server_db_path
 from util.states import AnonChatState
 
-from collections import defaultdict
 import asyncio
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-id_owner = os.getenv('ID_OWNER')
+id_owner = os.getenv("ID_OWNER")
 
 
 class AuthorizationMiddleware(BaseMiddleware):
@@ -30,23 +29,25 @@ class AuthorizationMiddleware(BaseMiddleware):
     """
 
     async def __call__(
-            self,
-            handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
-            event: TelegramObject,
-            data: Dict[str, Any],
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any],
     ) -> Any:
         authorization = get_flag(data, "authorization")
         if authorization:
             if authorization["is_authorized"]:
                 async with aiosqlite.connect(server_db_path) as db:
                     async with db.cursor() as cursor:
-                        if await (await cursor.execute(
-                            "SELECT id FROM users WHERE id = (?)",
-                            (event.from_user.id, )
-                        )).fetchone():
+                        if await (
+                            await cursor.execute(
+                                "SELECT id FROM users WHERE id = (?)",
+                                (event.from_user.id,),
+                            )
+                        ).fetchone():
                             return await handler(event, data)
                         else:
-                            return await auth_send(data['bot'], event)
+                            return await auth_send(data["bot"], event)
         else:
             return await handler(event, data)
 
@@ -57,25 +58,24 @@ class BanMiddleware(BaseMiddleware):
     """
 
     async def __call__(
-            self,
-            handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
-            event: TelegramObject,
-            data: Dict[str, Any],
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any],
     ) -> Any:
         banned = get_flag(data, "banned")
         if banned:
             if banned["isnt_banned"]:
                 async with aiosqlite.connect(server_db_path) as db:
                     async with db.cursor() as cursor:
-                        if await (await cursor.execute(
-                            "SELECT user_id FROM bans_anon_chat WHERE user_id = (?)",
-                            (event.from_user.id, )
-                        )).fetchone():
-                            builder = InlineKeyboardBuilder()
-                            builder.button(
-                                text="Оплатить 100 XTR",
-                                pay=True
+                        if await (
+                            await cursor.execute(
+                                "SELECT user_id FROM bans_anon_chat WHERE user_id = (?)",
+                                (event.from_user.id,),
                             )
+                        ).fetchone():
+                            builder = InlineKeyboardBuilder()
+                            builder.button(text="Оплатить 100 XTR", pay=True)
 
                             prices = [LabeledPrice(label="XTR", amount=100)]
                             if isinstance(event, Message):
@@ -93,7 +93,7 @@ class BanMiddleware(BaseMiddleware):
                                 provider_token="",
                                 payload="unban_payment",
                                 currency="XTR",
-                                reply_markup=builder.as_markup()
+                                reply_markup=builder.as_markup(),
                             )
                         else:
                             return await handler(event, data)
@@ -107,10 +107,10 @@ class OwnerMiddleware(BaseMiddleware):
     """
 
     async def __call__(
-            self,
-            handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
-            event: TelegramObject,
-            data: Dict[str, Any],
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any],
     ) -> Any:
         owner = get_flag(data, "owner") or {}
         if owner.get("is_owner"):
@@ -126,19 +126,21 @@ class ModeratorMiddleware(BaseMiddleware):
     """
 
     async def __call__(
-            self,
-            handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
-            event: TelegramObject,
-            data: Dict[str, Any],
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any],
     ) -> Any:
         moderator = get_flag(data, "moderator") or {}
         if moderator.get("is_moderator"):
             async with aiosqlite.connect(server_db_path) as db:
                 async with db.cursor() as cursor:
-                    moderators_id = await (await cursor.execute(
-                        "SELECT id FROM moderators WHERE id = ?",
-                        (event.from_user.id, )
-                    )).fetchone()
+                    moderators_id = await (
+                        await cursor.execute(
+                            "SELECT id FROM moderators WHERE id = ?",
+                            (event.from_user.id,),
+                        )
+                    ).fetchone()
                     if not moderators_id:
                         data["allowed"] = data.get("allowed") or False
                         return await handler(event, data)
@@ -155,19 +157,16 @@ class PermissonMiddleware(BaseMiddleware):
     """
 
     async def __call__(
-            self,
-            handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
-            event: TelegramObject,
-            data: Dict[str, Any],
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any],
     ) -> Any:
         permissions = get_flag(data, "permissions") or {}
         if permissions.get("any_permission"):
             if data.get("allowed"):
                 return await handler(event, data)
-            return await event.answer(
-                "Нет доступа",
-                show_alert=True
-            )
+            return await event.answer("Нет доступа", show_alert=True)
         else:
             return await handler(event, data)
 
