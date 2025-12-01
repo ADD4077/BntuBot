@@ -151,6 +151,37 @@ class ModeratorMiddleware(BaseMiddleware):
             return await handler(event, data)
 
 
+class StudentCouncilMiddleware(BaseMiddleware):
+    """
+    Checks if user is studcouncil member
+    """
+
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any],
+    ) -> Any:
+        moderator = get_flag(data, "studcouncil_member") or {}
+        if moderator.get("is_member"):
+            async with aiosqlite.connect(server_db_path) as db:
+                async with db.cursor() as cursor:
+                    moderators_id = await (
+                        await cursor.execute(
+                            "SELECT user_id FROM studcouncil_members WHERE user_id = ?",
+                            (event.from_user.id,),
+                        )
+                    ).fetchone()
+                    if not moderators_id:
+                        data["allowed"] = data.get("allowed") or False
+                        return await handler(event, data)
+                    else:
+                        data["allowed"] = data.get("allowed") or True
+                        return await handler(event, data)
+        else:
+            return await handler(event, data)
+
+
 class PermissonMiddleware(BaseMiddleware):
     """
     Checks if user has permissions

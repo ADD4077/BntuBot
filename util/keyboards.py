@@ -51,6 +51,18 @@ def events_buttons(event_type, page, count, is_owner, event_id):
     return builder.as_markup()
 
 
+def edit_event_choose(event_id):
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Название", callback_data=f"edit_event {event_id} name")
+    builder.button(text="Описание", callback_data=f"edit_event {event_id} description")
+    builder.button(text="Дата", callback_data=f"edit_event {event_id} date")
+    builder.button(text="Контакты", callback_data=f"edit_event {event_id} contacts")
+    builder.button(text="Участники", callback_data=f"edit_event {event_id} members")
+    builder.button(text="Изображение", callback_data=f"edit_event {event_id} image")
+    builder.adjust(1, 1, 1, 1, 1, 1)
+    return builder.as_markup()
+
+
 def studsovet_staff_menu_buttons():
     builder = InlineKeyboardBuilder()
     builder.button(text="АТФ", callback_data="student_coucil_staff АТФ")
@@ -189,7 +201,6 @@ def report_menu(reported_user_id: int, sender_id: int):
 
 def admin_panel_menu():
     builder = InlineKeyboardBuilder()
-    builder.button(text="Добавить мероприятие", callback_data="add_event")
     builder.button(text="Поиск пользователя", callback_data="search_user")
     builder.button(text="Поиск группы", callback_data="search_group")
     builder.button(text="Поиск факультета", callback_data="search_faculty")

@@ -35,6 +35,7 @@ from aiogram.types import (
     InlineQuery,
     InlineQueryResultArticle,
     InputTextMessageContent,
+    Message,
 )
 
 load_dotenv()
@@ -646,17 +647,24 @@ async def admin_panel_by_callback(callback: types.CallbackQuery, state: FSMConte
     await admin_panel(callback, state)
 
 
+@dp.message(Command("add_event"))
+@flags.owner(is_owner=True)
+@flags.studcouncil_member(is_member=True)
+@flags.permissions(any_permission=True)
+async def add_event_command(message: Message):
+    return await message.answer(
+        "Выберите какое мероприятие вы хотите добавить:",
+        reply_markup=keyboards.choose_event_type(),
+    )
+
+
 @dp.callback_query(F.data.split()[0] == "add_event")
 @flags.owner(is_owner=True)
+@flags.studcouncil_member(is_member=True)
 @flags.permissions(any_permission=True)
 @flags.authorization(is_authorized=True)
-async def search_user(callback: types.CallbackQuery, state: FSMContext):
+async def add_event_query(callback: types.CallbackQuery, state: FSMContext):
     args = callback.data.split()
-    if len(args) == 1:
-        return await callback.message.edit_text(
-            "Выберите какое мероприятие вы хотите добавить:",
-            reply_markup=keyboards.choose_event_type(),
-        )
     event_type = args[1]
     await state.clear()
     await state.update_data(event_type=event_type)
@@ -1385,6 +1393,12 @@ async def studsovet_events(callback: types.CallbackQuery):
     events = {}
     async with aiosqlite.connect(server_db_path) as db:
         async with db.cursor() as cursor:
+            isStudentCouncilMember = await (
+                await cursor.execute(
+                    "SELECT user_id FROM studcouncil_members WHERE user_id = (?)",
+                    (callback.from_user.id,),
+                )
+            ).fetchone()
             res = await (
                 await cursor.execute(
                     "SELECT id, name, date, description, image_url FROM events WHERE type = (?)",
@@ -1425,7 +1439,11 @@ async def studsovet_events(callback: types.CallbackQuery):
             photo=event["images"],
             caption=f"🎉 {event_name}\n\n📃 Описание:\n{event['description']}\n\n⏳ Дата: {datetime.datetime.fromtimestamp(event['date']).strftime('%Y.%m.%d %H:%M')}\n\n👥 Записано: {len(event['members'])}",
             reply_markup=keyboards.events_buttons(
-                event_type, page, events_count, is_owner, event_id
+                event_type,
+                page,
+                events_count,
+                is_owner or isStudentCouncilMember,
+                event_id,
             ),
         )
     else:
@@ -1433,7 +1451,11 @@ async def studsovet_events(callback: types.CallbackQuery):
             photo=studsovet_photo,
             caption=f"🎉 {event_name}\n\n📃 Описание:\n{event['description']}\n\n⏳ Дата: {datetime.datetime.fromtimestamp(event['date']).strftime('%Y.%m.%d %H:%M')}\n\n👥 Записано: {len(event['members'])}",
             reply_markup=keyboards.events_buttons(
-                event_type, page, events_count, is_owner, event_id
+                event_type,
+                page,
+                events_count,
+                is_owner or isStudentCouncilMember,
+                event_id,
             ),
         )
 
@@ -1455,8 +1477,87 @@ async def delete_event(callback: types.CallbackQuery):
 
 
 @dp.callback_query(F.data.split()[0] == "edit_event")
-async def edit_event(callback: types.CallbackQuery):
-    raise NotImplementedError("Бля отвечаю братка потом сделаю")
+async def edit_event(callback: types.CallbackQuery, state: FSMContext):
+    args = callback.data.split()[1:]
+    event_id = args[0]
+    if len(args) == 1:
+        return await callback.message.answer(
+            "Выберите какой пункт вы хотите редактировать.",
+            reply_markup=keyboards.edit_event_choose(args[0]),
+        )
+    field = args[1]
+    await state.set_state(states.EditEventData.edit)
+    await state.set_data({"event_id": event_id, "field": field})
+    match field:
+        case "name":
+            return await callback.message.edit_text("Введите новое название.")
+        case "description":
+            return await callback.message.edit_text("Введите новое описание.")
+        case "date":
+            return await callback.message.edit_text(
+                "Введите новую дату в формате 'дд.мм.гггг чч:мм'."
+            )
+        case "contacts":
+            return await callback.message.edit_text(
+                "Введите новые контакты. Каждый контакт с новой строки."
+            )
+        case "members":
+            return await callback.message.edit_text(
+                "Введите новых участников. Каждый участник с новой строки."
+            )
+        case "image":
+            return await callback.message.edit_text("Введите новую ссылку на картинку.")
+
+
+@dp.message(states.EditEventData.edit)
+async def edit_event_field(message: Message, state: FSMContext):
+    data = await state.get_data()
+    event_id = data["event_id"]
+    field = data["field"]
+    text = message.text
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            match field:
+                case "name":
+                    await cursor.execute(
+                        "UPDATE events SET name = ? WHERE id = ?", (text, event_id)
+                    )
+                case "description":
+                    await cursor.execute(
+                        "UPDATE events SET description = ? WHERE id = ?",
+                        (text, event_id),
+                    )
+                case "date":
+                    timestamp = datetime.datetime.strptime(
+                        text, "%d.%m.%Y %H:%M"
+                    ).timestamp()
+                    await cursor.execute(
+                        "UPDATE events SET date = ? WHERE id = ?", (timestamp, event_id)
+                    )
+                case "contacts":
+                    await cursor.execute(
+                        "DELETE FROM event_contacts WHERE event_id = ?", (event_id,)
+                    )
+                    for line in text.split("\n"):
+                        await cursor.execute(
+                            "INSERT INTO event_contacts(event_id, contact) VALUES (?, ?)",
+                            (event_id, line),
+                        )
+                case "members":
+                    await cursor.execute(
+                        "DELETE FROM event_members WHERE event_id = ?", (event_id,)
+                    )
+                    for line in text.split("\n"):
+                        await cursor.execute(
+                            "INSERT INTO event_members(event_id, member) VALUES (?, ?)",
+                            (event_id, line),
+                        )
+                case "image":
+                    await cursor.execute(
+                        "UPDATE events SET image_url = ? WHERE id = ?", (text, event_id)
+                    )
+        await db.commit()
+    return await message.answer("Успешно изменено")
 
 
 @dp.callback_query(F.data == "studsovet_support")
@@ -1707,6 +1808,31 @@ async def add_moderator(message: types.Message, command: Command):
     await message.answer("Пользователь назначен модератором")
 
 
+@dp.message(Command("add_studcouncil_member"))
+@flags.owner(is_owner=True)
+@flags.permissions(any_permission=True)
+async def add_studcouncil_member(message: types.Message, command: Command):
+    if not command.args:
+        return message.answer("Пожалуйста укажите ID пользователя")
+    user_id = int(command.args)
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            student_code = await (
+                await cursor.execute(
+                    "SELECT student_code FROM users WHERE id = ?", (user_id,)
+                )
+            ).fetchone()
+            if not student_code:
+                return await message.answer("Пользователь не найден")
+            student_code = student_code[0]
+            await cursor.execute(
+                "INSERT INTO moderators (id, student_code) VALUES (?, ?)",
+                (user_id, student_code),
+            )
+            await db.commit()
+    await message.answer("Пользователь назначен членом студсовета")
+
+
 async def main():
     os.makedirs("databases", exist_ok=True)
     async with aiosqlite.connect(server_db_path) as db:
@@ -1767,6 +1893,12 @@ async def main():
                 member TEXT NOT NULL,
                 FOREIGN KEY (event_id) REFERENCES events(id)
             )""")
+            await cursor.execute("""CREATE TABLE IF NOT EXISTS studcouncil_members(
+                user_id INT PRIMARY KEY,
+                student_code INT,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (student_code) REFERENCES users(student_code)
+            )""")
 
         await db.commit()
     me = await bot.get_me()
@@ -1781,6 +1913,8 @@ async def main():
     dp.callback_query.middleware(middleware.ModeratorMiddleware())
     dp.message.middleware(middleware.PermissonMiddleware())
     dp.callback_query.middleware(middleware.PermissonMiddleware())
+    dp.message.middleware(middleware.StudentCouncilMiddleware())
+    dp.callback_query.middleware(middleware.StudentCouncilMiddleware())
     dp.update.middleware(middleware.MediaGroupMiddleware())
     scheduler.start()
     await dp.start_polling(bot)
