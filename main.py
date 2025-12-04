@@ -665,11 +665,16 @@ async def add_event_command(message: Message):
 @flags.authorization(is_authorized=True)
 async def add_event_query(callback: types.CallbackQuery, state: FSMContext):
     args = callback.data.split()
+    if len(args) == 1:
+        return await callback.message.edit_caption(
+            text="Выберите какое мероприятие вы хотите добавить:",
+            reply_markup=keyboards.choose_event_type(True),
+        )
     event_type = args[1]
     await state.clear()
     await state.update_data(event_type=event_type)
     await state.set_state(states.InputEventData.name)
-    return await callback.message.edit_text("Введите название мероприятия.")
+    return await callback.message.answer("Введите название мероприятия.")
 
 
 @dp.message(states.InputEventData.name)
@@ -1357,10 +1362,21 @@ async def on_chat_edit_message(message: types.Message):
 @dp.callback_query(F.data.split()[0] == "studsovet")
 @flags.authorization(is_authorized=True)
 async def studsovet(callback: types.CallbackQuery):
+    is_owner = callback.from_user.id == id_owner
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            isStudentCouncilMember = await (
+                await cursor.execute(
+                    "SELECT user_id FROM studcouncil_members WHERE user_id = (?)",
+                    (callback.from_user.id,),
+                )
+            ).fetchone()
     if "return" in callback.data:
         await callback.message.edit_caption(
             caption="🎓 Студенческий совет БНТУ – молодёжная структура, деятельность которой направлена на поддержку и реализацию студенческих инициатив, взаимодействие от имени представителей обучающихся с руководством БНТУ, совместное решение вопросов жизнедеятельности студенческой молодёжи и помощи в реализации личностного потенциала в различных направлениях.",
-            reply_markup=keyboards.studsovet_buttons(),
+            reply_markup=keyboards.studsovet_buttons(
+                is_owner or isStudentCouncilMember
+            ),
         )
     else:
         if await func.safe_delete(callback) is None:
@@ -1368,7 +1384,9 @@ async def studsovet(callback: types.CallbackQuery):
         await callback.message.answer_photo(
             photo=studsovet_photo,
             caption="🎓 Студенческий совет БНТУ – молодёжная структура, деятельность которой направлена на поддержку и реализацию студенческих инициатив, взаимодействие от имени представителей обучающихся с руководством БНТУ, совместное решение вопросов жизнедеятельности студенческой молодёжи и помощи в реализации личностного потенциала в различных направлениях.",
-            reply_markup=keyboards.studsovet_buttons(),
+            reply_markup=keyboards.studsovet_buttons(
+                is_owner or isStudentCouncilMember
+            ),
         )
 
 
@@ -1560,10 +1578,20 @@ async def edit_event_field(message: Message, state: FSMContext):
     return await message.answer("Успешно изменено")
 
 
-@dp.callback_query(F.data == "studsovet_support")
+@dp.callback_query(F.data.split()[0] == "studsovet_support")
 @flags.authorization(is_authorized=True)
-async def studsovet_support(callback: types.CallbackQuery):
-    await callback.message.edit_caption(
+async def studsovet_support(callback: types.CallbackQuery, state: FSMContext):
+    args = callback.data.split()[1:]
+    if not args:
+        return await callback.message.edit_caption(
+            caption="📌 Выберите как вы хотите подать заявку или жалобу:",
+            reply_markup=keyboards.choose_support_type(),
+        )
+    if args[0] == "anonymous":
+        await state.set_data({"anonymous": True})
+    elif args[0] == "not_anonymous":
+        await state.set_data({"anonymous": False})
+    return await callback.message.edit_caption(
         caption="📌 Выберите интересующий Вас раздел подачи заявки с идеей или жалобой:",
         reply_markup=keyboards.studsovet_support_choice_buttons(),
     )
@@ -1572,8 +1600,6 @@ async def studsovet_support(callback: types.CallbackQuery):
 @dp.callback_query(F.data.split()[0] == "stud_support")
 @flags.authorization(is_authorized=True)
 async def stud_support(callback: types.CallbackQuery, state: FSMContext):
-    if await func.safe_delete(callback) is None:
-        return
     await callback.message.answer(
         f'🧩 Отправьте Ваше сообщение с идеей или жалобой по разделу "{callback.data.split(" ", 1)[1]}":'
     )
@@ -1585,11 +1611,32 @@ async def stud_support(callback: types.CallbackQuery, state: FSMContext):
 async def auto_auth_end(message: types.Message, state: FSMContext):
     data = await state.get_data()
     category = data.get("category")
+    is_anonymous = data.get("anonymous")
+    if is_anonymous:
+        text = f"Заявка\n🗂 Раздел: {category}\n\n📃 Содержание:\n{message.text}"
+    else:
+        async with aiosqlite.connect(server_db_path) as db:
+            async with db.cursor() as cursor:
+                student_info = await (
+                    await cursor.execute(
+                        "SELECT student_code, FullName, faculty FROM users WHERE id = (?)",
+                        (message.from_user.id,),
+                    )
+                ).fetchone()
+
+        text = (
+            f"⚠️ Заявка от {'@' + message.from_user.username if message.from_user.username else message.from_user.full_name}\n\n"
+            "Информация о студенте:\n"
+            f"Номер студенческого: {student_info[0]}\n"
+            f"Фамилия и имя: {student_info[1]}\n"
+            f"Факультет: {student_info[2]}\n"
+            f"🗂 Раздел: {category}\n\n"
+            f"📃 Содержание:\n{message.text}"
+        )
+
     await bot.send_message(
         chat_id=studsovet_chat_id,
-        text=f"⚠️ Заявка от {'@' + message.from_user.username if message.from_user.username else message.from_user.full_name}\n\n"
-        f"🗂 Раздел: {category}\n\n"
-        f"📃 Содержание:\n{message.text}",
+        text=text,
     )
     await message.answer(
         "✅ Ваше сообщение было отправлено в студсовет, при необходимости мы свяжемся с Вами. Спасибо!",
