@@ -1,6 +1,8 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 import json
 
+from bs4 import builder
+
 
 def main_menu_buttons():
     builder = InlineKeyboardBuilder()
@@ -270,6 +272,14 @@ def search_faculty_buttons():
     return builder.as_markup()
 
 
+def literature_and_schedule_admin_buttons(data_to_parse: str):
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Запарсить", callback_data=f"parse {data_to_parse}")
+    builder.button(text="Назад", callback_data="back_to_admin_panel")
+    builder.adjust(1, 1)
+    return builder.as_markup()
+
+
 def back_to_admin_panel():
     builder = InlineKeyboardBuilder()
     builder.button(text="Назад", callback_data="back_to_admin_panel")
@@ -330,10 +340,18 @@ def back_to_schedule():
 
 def help_menu():
     builder = InlineKeyboardBuilder()
+    builder.button(text="Написать в поддержку", callback_data="message_support")
     builder.button(
         text="Политика конфиденциальности",
         url="https://telegra.ph/Politika-konfidencialnosti-09-08-51",
     )
     builder.button(text="⬅️ Назад", callback_data="profile")
     builder.adjust(1, 1)
+    return builder.as_markup()
+
+
+def support_answer_buttons(user_id):
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Ответить", callback_data=f"answer_support {user_id}")
+    builder.adjust(1)
     return builder.as_markup()

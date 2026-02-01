@@ -422,7 +422,9 @@ def parse_student_councils():
             student_councils[faculty]["hostels"][hostel] = hostel_student_councils[
                 hostel
             ]
-    with open("./student_councils/student_council_chairmans.json", 'w', encoding='utf-8') as json_file:
+    with open(
+        "./student_councils/student_council_chairmans.json", "w", encoding="utf-8"
+    ) as json_file:
         json.dump(student_councils, json_file, indent=4, ensure_ascii=False)
 
 
@@ -430,7 +432,7 @@ async def send_message(
     bot,
     chat_id: int,
     message: types.message.Message,
-    anon_chat_id: int,
+    anon_chat_id: int | None = None,
     media_group: Union[Any, None] = None,
     is_report: Union[bool, None] = None,
 ):
@@ -534,3 +536,4 @@ async def send_message(
                 if "message to be replied not found" in e.__repr__():
                     return await bot.send_message(chat_id, text)
         return await bot.send_message(chat_id, text)
+

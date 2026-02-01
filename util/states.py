@@ -57,5 +57,10 @@ class InputEventData(StatesGroup):
     image = State()
 
 
+class SupportStates(StatesGroup):
+    message = State()
+    answer = State()
+
+
 class EditEventData(StatesGroup):
     edit = State()

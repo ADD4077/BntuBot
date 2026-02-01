@@ -8,6 +8,7 @@ import hashlib
 import logging
 import datetime
 import aiosqlite
+import multiprocessing
 
 from dotenv import load_dotenv
 from util import func
@@ -60,7 +61,9 @@ support_chat_id = int(os.getenv("SUPPORT_CHAT_ID"))
 studsovet_chat_id = int(os.getenv("STUDSOVET_CHAT_ID"))
 
 bot = Bot(token=API_TOKEN)
-dp = Dispatcher(storage=RedisStorage(Redis(host="redis", port=6379, password=redis_password)))
+dp = Dispatcher(
+    storage=RedisStorage(Redis(host="redis", port=6379, password=redis_password))
+)
 tz = pytz.timezone("Europe/Moscow")
 
 os.environ["TZ"] = "Europe/Moscow"
@@ -188,9 +191,10 @@ async def start(message: types.Message):
 
 @dp.callback_query(F.data == "main_menu")
 @flags.authorization(is_authorized=True)
-async def main_menu(callback: types.CallbackQuery):
+async def main_menu(callback: types.CallbackQuery, state: FSMContext):
     if await func.safe_delete(callback) is None:
         return
+    await state.clear()
     await callback.message.answer_photo(
         photo=main_menu_image,
         caption=f"Рады вас видеть, @{callback.from_user.username}!\n\nЭто бот, созданный инженерно-педагогическим факультетом, группой прикладного программирования, в котором Вы сможете найти полезную информацию.\n\nБот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\nПочему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
@@ -753,6 +757,42 @@ async def input_event_image(message: types.Message, state: FSMContext):
     return message.answer("Мероприятие добавлено.")
 
 
+@dp.callback_query(F.data == "message_support")
+async def message_support(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(states.SupportStates.message)
+    await callback.message.answer(
+        "Напишите сообщение в поддержку.", reply_markup=keyboards.back_to_main()
+    )
+
+
+@dp.message(states.SupportStates.message)
+async def on_support_message(message: Message, state: FSMContext):
+    await bot.forward_message(id_owner, message.chat.id, message.message_id)
+    await bot.send_message(
+        id_owner,
+        f"Обращение от пользователя @{message.from_user.username}",
+        reply_markup=keyboards.support_answer_buttons(message.from_user.id),
+    )
+    await message.answer("Ваше сообщение отправлено!")
+    await state.clear()
+
+
+@dp.callback_query(F.data.startswith("answer_support"))
+async def answer_support(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.answer("Напишите ваш ответ.")
+    await state.set_state(states.SupportStates.answer)
+    await state.set_data({"user_id": callback.data.split(" ")[1]})
+
+
+@dp.message(states.SupportStates.answer)
+async def on_answer_support(message: Message, state: FSMContext):
+    user_id = (await state.get_data()).get("user_id")
+    await bot.send_message(user_id, "Ответ от поддержки:")
+    await func.send_message(bot, int(user_id), message, is_report=True)
+    await state.clear()
+    await message.answer("Ответ отправлен!")
+
+
 @dp.callback_query(F.data == "search_user")
 @flags.owner(is_owner=True)
 @flags.permissions(any_permission=True)
@@ -1077,7 +1117,7 @@ async def admin_schedule(callback: types.CallbackQuery):
     await callback.message.edit_text(
         f"Самое последнее изменение: {newest_modification} ({sorted_by_modification_time[0]})\n"
         f"Самое давнее изменение: {oldest_modificatiom} ({sorted_by_modification_time[-1]})",
-        reply_markup=keyboards.back_to_admin_panel(),
+        reply_markup=keyboards.literature_and_schedule_admin_buttons("schedule"),
     )
 
 
@@ -1094,8 +1134,31 @@ async def admin_literature(callback: types.CallbackQuery):
         count += int(books["count"][1:-1])
     await callback.message.edit_text(
         f"Последнее изменение литературы: {modification_time}\nКол-во книг: {count}",
-        reply_markup=keyboards.back_to_admin_panel(),
+        reply_markup=keyboards.literature_and_schedule_admin_buttons("literature"),
     )
+
+
+@dp.callback_query(F.data.startswith("parse"))
+async def parse(callback: types.CallbackQuery):
+    if "confirmed" not in callback.data:
+        return callback.message.edit_text(
+            "Подтвердите действие.",
+            reply_markup=keyboards.literature_and_schedule_admin_buttons(
+                f"{callback.data.split(' ')[1]} confirmed"
+            ),
+        )
+    if callback.data.split(" ")[1] == "schedule":
+        await callback.message.edit_text(
+            "Парсинг начался.", reply_markup=keyboards.back_to_admin_panel()
+        )
+        multiprocessing.Process(target=func.parse_schedule).start()
+    elif callback.data.split(" ")[1] == "literature":
+        await callback.message.edit_text(
+            "Парсинг начался.", reply_markup=keyboards.back_to_admin_panel()
+        )
+        multiprocessing.Process(target=func.parse_literature)
+    else:
+        raise NotImplementedError("Unknown data to parse.")
 
 
 @dp.callback_query(F.data.contains("ban_user"))
