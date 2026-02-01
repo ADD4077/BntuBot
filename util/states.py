@@ -56,3 +56,6 @@ class InputEventData(StatesGroup):
     members = State()
     image = State()
 
+
+class EditEventData(StatesGroup):
+    edit = State()

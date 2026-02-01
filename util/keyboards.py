@@ -13,13 +13,18 @@ def main_menu_buttons():
     return builder.as_markup()
 
 
-def studsovet_buttons():
+def studsovet_buttons(is_owner):
     builder = InlineKeyboardBuilder()
     builder.button(text="💼 Советы", callback_data="studsovet_staff_menu")
     builder.button(text="🍻 Мероприятия БНТУ", callback_data="events bntu 1")
     builder.button(text="🍻 Мероприятия", callback_data="events studsovet 1")
     builder.button(text="💡 Идеи и жалобы", callback_data="studsovet_support")
+    if is_owner:
+        builder.button(text="Добавить мероприятие", callback_data="add_event")
     builder.button(text="⬅️ Назад", callback_data="main_menu")
+    if is_owner:
+        builder.adjust(1, 1, 1, 1, 1, 1)
+        return builder.as_markup()
     builder.adjust(1, 1, 1, 1, 1)
     return builder.as_markup()
 
@@ -48,6 +53,27 @@ def events_buttons(event_type, page, count, is_owner, event_id):
         builder.adjust(5, 1, 1, 1)
         return builder.as_markup()
     builder.adjust(5, 1)
+    return builder.as_markup()
+
+
+def edit_event_choose(event_id):
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Название", callback_data=f"edit_event {event_id} name")
+    builder.button(text="Описание", callback_data=f"edit_event {event_id} description")
+    builder.button(text="Дата", callback_data=f"edit_event {event_id} date")
+    builder.button(text="Контакты", callback_data=f"edit_event {event_id} contacts")
+    builder.button(text="Участники", callback_data=f"edit_event {event_id} members")
+    builder.button(text="Изображение", callback_data=f"edit_event {event_id} image")
+    builder.adjust(1, 1, 1, 1, 1, 1)
+    return builder.as_markup()
+
+
+def choose_support_type():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Анонимно", callback_data="studsovet_support anonymous")
+    builder.button(text="Не анонимно", callback_data="studsovet_support not_anonymous")
+    builder.button(text="⬅️ Назад", callback_data="studsovet return")
+    builder.adjust(1, 1, 1)
     return builder.as_markup()
 
 
@@ -189,7 +215,6 @@ def report_menu(reported_user_id: int, sender_id: int):
 
 def admin_panel_menu():
     builder = InlineKeyboardBuilder()
-    builder.button(text="Добавить мероприятие", callback_data="add_event")
     builder.button(text="Поиск пользователя", callback_data="search_user")
     builder.button(text="Поиск группы", callback_data="search_group")
     builder.button(text="Поиск факультета", callback_data="search_faculty")
@@ -199,10 +224,14 @@ def admin_panel_menu():
     return builder.as_markup()
 
 
-def choose_event_type():
+def choose_event_type(is_from_callback=None):
     builder = InlineKeyboardBuilder()
     builder.button(text="Мероприятие БНТУ", callback_data="add_event bntu")
     builder.button(text="Мероприятие студсовета", callback_data="add_event studsovet")
+    if is_from_callback:
+        builder.button(text="⬅️ Назад", callback_data="studsovet return")
+        builder.adjust(1, 1, 1)
+        return builder.as_markup()
     builder.adjust(1, 1)
     return builder.as_markup()
 

@@ -35,12 +35,14 @@ from aiogram.types import (
     InlineQuery,
     InlineQueryResultArticle,
     InputTextMessageContent,
+    Message,
 )
 
 load_dotenv()
 
 
 API_TOKEN = os.getenv("TOKEN")
+redis_password = os.getenv("REDIS_PASSWORD")
 
 main_menu_image = os.getenv("MAIN_IMAGE")
 schedule_image = os.getenv("SCHEDULE_IMAGE")
@@ -58,13 +60,13 @@ support_chat_id = int(os.getenv("SUPPORT_CHAT_ID"))
 studsovet_chat_id = int(os.getenv("STUDSOVET_CHAT_ID"))
 
 bot = Bot(token=API_TOKEN)
-dp = Dispatcher(storage=RedisStorage(Redis(host="redis", port=6379)))
+dp = Dispatcher(storage=RedisStorage(Redis(host="redis", port=6379, password=redis_password)))
 tz = pytz.timezone("Europe/Moscow")
 
 os.environ["TZ"] = "Europe/Moscow"
 time.tzset()
 
-jobstores = {"default": RedisJobStore(host="redis", port=6379)}
+jobstores = {"default": RedisJobStore(host="redis", port=6379, password=redis_password)}
 scheduler = AsyncIOScheduler(jobstores=jobstores)
 
 
@@ -646,22 +648,34 @@ async def admin_panel_by_callback(callback: types.CallbackQuery, state: FSMConte
     await admin_panel(callback, state)
 
 
+@dp.message(Command("add_event"))
+@flags.owner(is_owner=True)
+@flags.studcouncil_member(is_member=True)
+@flags.permissions(any_permission=True)
+async def add_event_command(message: Message):
+    return await message.answer(
+        "Выберите какое мероприятие вы хотите добавить:",
+        reply_markup=keyboards.choose_event_type(),
+    )
+
+
 @dp.callback_query(F.data.split()[0] == "add_event")
 @flags.owner(is_owner=True)
+@flags.studcouncil_member(is_member=True)
 @flags.permissions(any_permission=True)
 @flags.authorization(is_authorized=True)
-async def search_user(callback: types.CallbackQuery, state: FSMContext):
+async def add_event_query(callback: types.CallbackQuery, state: FSMContext):
     args = callback.data.split()
     if len(args) == 1:
-        return await callback.message.edit_text(
-            "Выберите какое мероприятие вы хотите добавить:",
-            reply_markup=keyboards.choose_event_type(),
+        return await callback.message.edit_caption(
+            text="Выберите какое мероприятие вы хотите добавить:",
+            reply_markup=keyboards.choose_event_type(True),
         )
     event_type = args[1]
     await state.clear()
     await state.update_data(event_type=event_type)
     await state.set_state(states.InputEventData.name)
-    return await callback.message.edit_text("Введите название мероприятия.")
+    return await callback.message.answer("Введите название мероприятия.")
 
 
 @dp.message(states.InputEventData.name)
@@ -1349,10 +1363,21 @@ async def on_chat_edit_message(message: types.Message):
 @dp.callback_query(F.data.split()[0] == "studsovet")
 @flags.authorization(is_authorized=True)
 async def studsovet(callback: types.CallbackQuery):
+    is_owner = callback.from_user.id == id_owner
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            isStudentCouncilMember = await (
+                await cursor.execute(
+                    "SELECT user_id FROM studcouncil_members WHERE user_id = (?)",
+                    (callback.from_user.id,),
+                )
+            ).fetchone()
     if "return" in callback.data:
         await callback.message.edit_caption(
             caption="🎓 Студенческий совет БНТУ – молодёжная структура, деятельность которой направлена на поддержку и реализацию студенческих инициатив, взаимодействие от имени представителей обучающихся с руководством БНТУ, совместное решение вопросов жизнедеятельности студенческой молодёжи и помощи в реализации личностного потенциала в различных направлениях.",
-            reply_markup=keyboards.studsovet_buttons(),
+            reply_markup=keyboards.studsovet_buttons(
+                is_owner or isStudentCouncilMember
+            ),
         )
     else:
         if await func.safe_delete(callback) is None:
@@ -1360,7 +1385,9 @@ async def studsovet(callback: types.CallbackQuery):
         await callback.message.answer_photo(
             photo=studsovet_photo,
             caption="🎓 Студенческий совет БНТУ – молодёжная структура, деятельность которой направлена на поддержку и реализацию студенческих инициатив, взаимодействие от имени представителей обучающихся с руководством БНТУ, совместное решение вопросов жизнедеятельности студенческой молодёжи и помощи в реализации личностного потенциала в различных направлениях.",
-            reply_markup=keyboards.studsovet_buttons(),
+            reply_markup=keyboards.studsovet_buttons(
+                is_owner or isStudentCouncilMember
+            ),
         )
 
 
@@ -1385,6 +1412,12 @@ async def studsovet_events(callback: types.CallbackQuery):
     events = {}
     async with aiosqlite.connect(server_db_path) as db:
         async with db.cursor() as cursor:
+            isStudentCouncilMember = await (
+                await cursor.execute(
+                    "SELECT user_id FROM studcouncil_members WHERE user_id = (?)",
+                    (callback.from_user.id,),
+                )
+            ).fetchone()
             res = await (
                 await cursor.execute(
                     "SELECT id, name, date, description, image_url FROM events WHERE type = (?)",
@@ -1425,7 +1458,11 @@ async def studsovet_events(callback: types.CallbackQuery):
             photo=event["images"],
             caption=f"🎉 {event_name}\n\n📃 Описание:\n{event['description']}\n\n⏳ Дата: {datetime.datetime.fromtimestamp(event['date']).strftime('%Y.%m.%d %H:%M')}\n\n👥 Записано: {len(event['members'])}",
             reply_markup=keyboards.events_buttons(
-                event_type, page, events_count, is_owner, event_id
+                event_type,
+                page,
+                events_count,
+                is_owner or isStudentCouncilMember,
+                event_id,
             ),
         )
     else:
@@ -1433,7 +1470,11 @@ async def studsovet_events(callback: types.CallbackQuery):
             photo=studsovet_photo,
             caption=f"🎉 {event_name}\n\n📃 Описание:\n{event['description']}\n\n⏳ Дата: {datetime.datetime.fromtimestamp(event['date']).strftime('%Y.%m.%d %H:%M')}\n\n👥 Записано: {len(event['members'])}",
             reply_markup=keyboards.events_buttons(
-                event_type, page, events_count, is_owner, event_id
+                event_type,
+                page,
+                events_count,
+                is_owner or isStudentCouncilMember,
+                event_id,
             ),
         )
 
@@ -1455,14 +1496,103 @@ async def delete_event(callback: types.CallbackQuery):
 
 
 @dp.callback_query(F.data.split()[0] == "edit_event")
-async def edit_event(callback: types.CallbackQuery):
-    raise NotImplementedError("Бля отвечаю братка потом сделаю")
+async def edit_event(callback: types.CallbackQuery, state: FSMContext):
+    args = callback.data.split()[1:]
+    event_id = args[0]
+    if len(args) == 1:
+        return await callback.message.answer(
+            "Выберите какой пункт вы хотите редактировать.",
+            reply_markup=keyboards.edit_event_choose(args[0]),
+        )
+    field = args[1]
+    await state.set_state(states.EditEventData.edit)
+    await state.set_data({"event_id": event_id, "field": field})
+    match field:
+        case "name":
+            return await callback.message.edit_text("Введите новое название.")
+        case "description":
+            return await callback.message.edit_text("Введите новое описание.")
+        case "date":
+            return await callback.message.edit_text(
+                "Введите новую дату в формате 'дд.мм.гггг чч:мм'."
+            )
+        case "contacts":
+            return await callback.message.edit_text(
+                "Введите новые контакты. Каждый контакт с новой строки."
+            )
+        case "members":
+            return await callback.message.edit_text(
+                "Введите новых участников. Каждый участник с новой строки."
+            )
+        case "image":
+            return await callback.message.edit_text("Введите новую ссылку на картинку.")
 
 
-@dp.callback_query(F.data == "studsovet_support")
+@dp.message(states.EditEventData.edit)
+async def edit_event_field(message: Message, state: FSMContext):
+    data = await state.get_data()
+    event_id = data["event_id"]
+    field = data["field"]
+    text = message.text
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            match field:
+                case "name":
+                    await cursor.execute(
+                        "UPDATE events SET name = ? WHERE id = ?", (text, event_id)
+                    )
+                case "description":
+                    await cursor.execute(
+                        "UPDATE events SET description = ? WHERE id = ?",
+                        (text, event_id),
+                    )
+                case "date":
+                    timestamp = datetime.datetime.strptime(
+                        text, "%d.%m.%Y %H:%M"
+                    ).timestamp()
+                    await cursor.execute(
+                        "UPDATE events SET date = ? WHERE id = ?", (timestamp, event_id)
+                    )
+                case "contacts":
+                    await cursor.execute(
+                        "DELETE FROM event_contacts WHERE event_id = ?", (event_id,)
+                    )
+                    for line in text.split("\n"):
+                        await cursor.execute(
+                            "INSERT INTO event_contacts(event_id, contact) VALUES (?, ?)",
+                            (event_id, line),
+                        )
+                case "members":
+                    await cursor.execute(
+                        "DELETE FROM event_members WHERE event_id = ?", (event_id,)
+                    )
+                    for line in text.split("\n"):
+                        await cursor.execute(
+                            "INSERT INTO event_members(event_id, member) VALUES (?, ?)",
+                            (event_id, line),
+                        )
+                case "image":
+                    await cursor.execute(
+                        "UPDATE events SET image_url = ? WHERE id = ?", (text, event_id)
+                    )
+        await db.commit()
+    return await message.answer("Успешно изменено")
+
+
+@dp.callback_query(F.data.split()[0] == "studsovet_support")
 @flags.authorization(is_authorized=True)
-async def studsovet_support(callback: types.CallbackQuery):
-    await callback.message.edit_caption(
+async def studsovet_support(callback: types.CallbackQuery, state: FSMContext):
+    args = callback.data.split()[1:]
+    if not args:
+        return await callback.message.edit_caption(
+            caption="📌 Выберите как вы хотите подать заявку или жалобу:",
+            reply_markup=keyboards.choose_support_type(),
+        )
+    if args[0] == "anonymous":
+        await state.set_data({"anonymous": True})
+    elif args[0] == "not_anonymous":
+        await state.set_data({"anonymous": False})
+    return await callback.message.edit_caption(
         caption="📌 Выберите интересующий Вас раздел подачи заявки с идеей или жалобой:",
         reply_markup=keyboards.studsovet_support_choice_buttons(),
     )
@@ -1471,8 +1601,6 @@ async def studsovet_support(callback: types.CallbackQuery):
 @dp.callback_query(F.data.split()[0] == "stud_support")
 @flags.authorization(is_authorized=True)
 async def stud_support(callback: types.CallbackQuery, state: FSMContext):
-    if await func.safe_delete(callback) is None:
-        return
     await callback.message.answer(
         f'🧩 Отправьте Ваше сообщение с идеей или жалобой по разделу "{callback.data.split(" ", 1)[1]}":'
     )
@@ -1484,11 +1612,32 @@ async def stud_support(callback: types.CallbackQuery, state: FSMContext):
 async def auto_auth_end(message: types.Message, state: FSMContext):
     data = await state.get_data()
     category = data.get("category")
+    is_anonymous = data.get("anonymous")
+    if is_anonymous:
+        text = f"Заявка\n🗂 Раздел: {category}\n\n📃 Содержание:\n{message.text}"
+    else:
+        async with aiosqlite.connect(server_db_path) as db:
+            async with db.cursor() as cursor:
+                student_info = await (
+                    await cursor.execute(
+                        "SELECT student_code, FullName, faculty FROM users WHERE id = (?)",
+                        (message.from_user.id,),
+                    )
+                ).fetchone()
+
+        text = (
+            f"⚠️ Заявка от {'@' + message.from_user.username if message.from_user.username else message.from_user.full_name}\n\n"
+            "Информация о студенте:\n"
+            f"Номер студенческого: {student_info[0]}\n"
+            f"Фамилия и имя: {student_info[1]}\n"
+            f"Факультет: {student_info[2]}\n"
+            f"🗂 Раздел: {category}\n\n"
+            f"📃 Содержание:\n{message.text}"
+        )
+
     await bot.send_message(
         chat_id=studsovet_chat_id,
-        text=f"⚠️ Заявка от {'@' + message.from_user.username if message.from_user.username else message.from_user.full_name}\n\n"
-        f"🗂 Раздел: {category}\n\n"
-        f"📃 Содержание:\n{message.text}",
+        text=text,
     )
     await message.answer(
         "✅ Ваше сообщение было отправлено в студсовет, при необходимости мы свяжемся с Вами. Спасибо!",
@@ -1707,6 +1856,31 @@ async def add_moderator(message: types.Message, command: Command):
     await message.answer("Пользователь назначен модератором")
 
 
+@dp.message(Command("add_studcouncil_member"))
+@flags.owner(is_owner=True)
+@flags.permissions(any_permission=True)
+async def add_studcouncil_member(message: types.Message, command: Command):
+    if not command.args:
+        return message.answer("Пожалуйста укажите ID пользователя")
+    user_id = int(command.args)
+    async with aiosqlite.connect(server_db_path) as db:
+        async with db.cursor() as cursor:
+            student_code = await (
+                await cursor.execute(
+                    "SELECT student_code FROM users WHERE id = ?", (user_id,)
+                )
+            ).fetchone()
+            if not student_code:
+                return await message.answer("Пользователь не найден")
+            student_code = student_code[0]
+            await cursor.execute(
+                "INSERT INTO moderators (id, student_code) VALUES (?, ?)",
+                (user_id, student_code),
+            )
+            await db.commit()
+    await message.answer("Пользователь назначен членом студсовета")
+
+
 async def main():
     os.makedirs("databases", exist_ok=True)
     async with aiosqlite.connect(server_db_path) as db:
@@ -1767,6 +1941,12 @@ async def main():
                 member TEXT NOT NULL,
                 FOREIGN KEY (event_id) REFERENCES events(id)
             )""")
+            await cursor.execute("""CREATE TABLE IF NOT EXISTS studcouncil_members(
+                user_id INT PRIMARY KEY,
+                student_code INT,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (student_code) REFERENCES users(student_code)
+            )""")
 
         await db.commit()
     me = await bot.get_me()
@@ -1781,6 +1961,8 @@ async def main():
     dp.callback_query.middleware(middleware.ModeratorMiddleware())
     dp.message.middleware(middleware.PermissonMiddleware())
     dp.callback_query.middleware(middleware.PermissonMiddleware())
+    dp.message.middleware(middleware.StudentCouncilMiddleware())
+    dp.callback_query.middleware(middleware.StudentCouncilMiddleware())
     dp.update.middleware(middleware.MediaGroupMiddleware())
     scheduler.start()
     await dp.start_polling(bot)
