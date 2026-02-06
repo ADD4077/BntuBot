@@ -329,7 +329,7 @@ def schedule_menu():
 
 def schedule_menu_other(week):
     builder = InlineKeyboardBuilder()
-    builder.button(text="Пн", callback_data=f" Понедельник {week}")
+    builder.button(text="Пн", callback_data=f"send_schedule_week Понедельник {week}")
     builder.button(text="Вт", callback_data=f"send_schedule_week Вторник {week}")
     builder.button(text="Ср", callback_data=f"send_schedule_week Среда {week}")
     builder.button(text="Чт", callback_data=f"send_schedule_week Четверг {week}")
