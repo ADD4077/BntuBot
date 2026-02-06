@@ -6,12 +6,14 @@ from bs4 import builder
 
 def main_menu_buttons():
     builder = InlineKeyboardBuilder()
-    builder.button(text="🎓 Студсовет", callback_data="studsovet")
+    # builder.button(text="🎓 Студсовет", callback_data="studsovet")
+    
     builder.button(text="📅 Расписание", callback_data="schedule")
     builder.button(text="📜 Литература", switch_inline_query_current_chat="")
     builder.button(text="🗺 Карта", callback_data="map")
+    builder.button(text="🕵🏻 Анонимный чат", callback_data="anonymous_chat")
     builder.button(text="👤 Профиль", callback_data="profile")
-    builder.adjust(1, 2, 2)
+    builder.adjust(2, 2, 1)
     return builder.as_markup()
 
 
