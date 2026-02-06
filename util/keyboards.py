@@ -150,12 +150,12 @@ def studsovet_support_choice_buttons():
 def profile_buttons():
     builder = InlineKeyboardBuilder()
     builder.button(text="⏰ Рассылка", callback_data="scheduled_message")
-    builder.button(text="👥 Реферальная система", callback_data="referal_system")
+    builder.button(text="🔗 Реферальная система", callback_data="referal_system")    
+    builder.button(text="🛠️ Поддержка", callback_data="help")
     builder.button(text="📎 Наш Канал", url="https://t.me/BNTUnity")
     builder.button(text="🌐 Сайт БНТУ", url="https://bntu.by")
-    builder.button(text="🛠️ Поддержка", callback_data="help")
     builder.button(text="⬅️ Назад", callback_data="main_menu")
-    builder.adjust(1, 1, 2, 1, 1)
+    builder.adjust(1, 1, 1, 2, 1)
     return builder.as_markup()
 
 
@@ -217,14 +217,20 @@ def report_menu(reported_user_id: int, sender_id: int):
 
 def admin_panel_menu():
     builder = InlineKeyboardBuilder()
-    builder.button(text="Поиск пользователя", callback_data="search_user")
-    builder.button(text="Поиск группы", callback_data="search_group")
-    builder.button(text="Поиск факультета", callback_data="search_faculty")
+    builder.button(text="Поиск", callback_data="admin_search")
     builder.button(text="Расписание", callback_data="admin_schedule")
     builder.button(text="Литература", callback_data="admin_literature")
     builder.adjust(1, 1, 1, 1, 2)
     return builder.as_markup()
 
+def admin_panel_menu_search():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Поиск пользователя", callback_data="search_user")
+    builder.button(text="Поиск группы", callback_data="search_group")
+    builder.button(text="Поиск факультета", callback_data="search_faculty")
+    builder.button(text="⬅️ Назад", callback_data="back_to_admin_panel")
+    builder.adjust(1, 1, 1, 1, 2)
+    return builder.as_markup()
 
 def choose_event_type(is_from_callback=None):
     builder = InlineKeyboardBuilder()
@@ -242,7 +248,7 @@ def search_user_buttons():
     builder = InlineKeyboardBuilder()
     builder.button(text="Telegram ID", callback_data="search_by_user_id")
     builder.button(text="Cтуд. билета", callback_data="search_by_group_number")
-    builder.button(text="Назад", callback_data="back_to_admin_panel")
+    builder.button(text="⬅️ Назад", callback_data="back_to_admin_panel")
     builder.adjust(2, 1)
     return builder.as_markup()
 
@@ -250,7 +256,7 @@ def search_user_buttons():
 def control_user_buttons(user_id):
     builder = InlineKeyboardBuilder()
     builder.button(text="Сообщение", callback_data=f"send_message_for_user {user_id}")
-    builder.button(text="Назад", callback_data="back_to_admin_panel")
+    builder.button(text="⬅️ Назад", callback_data="back_to_admin_panel")
     builder.adjust(1, 1)
     return builder.as_markup()
 
@@ -258,7 +264,7 @@ def control_user_buttons(user_id):
 def control_group_buttons(group_id):
     builder = InlineKeyboardBuilder()
     builder.button(text="Рассылка", callback_data=f"send_message_for_group {group_id}")
-    builder.button(text="Назад", callback_data="back_to_admin_panel")
+    builder.button(text="⬅️ Назад", callback_data="back_to_admin_panel")
     builder.adjust(1, 1)
     return builder.as_markup()
 
@@ -267,7 +273,7 @@ def search_faculty_buttons():
     builder = InlineKeyboardBuilder()
     builder.button(text="По аббревиатуре", callback_data="search_by_faculty_abbr")
     builder.button(text="По номеру", callback_data="search_by_faculty_number")
-    builder.button(text="Назад", callback_data="back_to_admin_panel")
+    builder.button(text="⬅️ Назад", callback_data="back_to_admin_panel")
     builder.adjust(2, 1)
     return builder.as_markup()
 
@@ -275,21 +281,21 @@ def search_faculty_buttons():
 def literature_and_schedule_admin_buttons(data_to_parse: str):
     builder = InlineKeyboardBuilder()
     builder.button(text="Запарсить", callback_data=f"parse {data_to_parse}")
-    builder.button(text="Назад", callback_data="back_to_admin_panel")
+    builder.button(text="⬅️ Назад", callback_data="back_to_admin_panel")
     builder.adjust(1, 1)
     return builder.as_markup()
 
 
 def back_to_admin_panel():
     builder = InlineKeyboardBuilder()
-    builder.button(text="Назад", callback_data="back_to_admin_panel")
+    builder.button(text="⬅️ Назад", callback_data="back_to_admin_panel")
     builder.adjust(1)
     return builder.as_markup()
 
 
 def map_menu():
     builder = InlineKeyboardBuilder()
-    builder.button(text="Назад", callback_data="main_menu")
+    builder.button(text="⬅️ Назад", callback_data="main_menu")
     return builder.as_markup()
 
 
@@ -321,7 +327,7 @@ def schedule_menu():
 
 def schedule_menu_other(week):
     builder = InlineKeyboardBuilder()
-    builder.button(text="Пн", callback_data=f"send_schedule_week Понедельник {week}")
+    builder.button(text="Пн", callback_data=f" Понедельник {week}")
     builder.button(text="Вт", callback_data=f"send_schedule_week Вторник {week}")
     builder.button(text="Ср", callback_data=f"send_schedule_week Среда {week}")
     builder.button(text="Чт", callback_data=f"send_schedule_week Четверг {week}")
@@ -340,9 +346,9 @@ def back_to_schedule():
 
 def help_menu():
     builder = InlineKeyboardBuilder()
-    builder.button(text="Написать в поддержку", callback_data="message_support")
+    builder.button(text="📪 Написать в поддержку", callback_data="message_support")
     builder.button(
-        text="Политика конфиденциальности",
+        text="📝 Политика конфиденциальности",
         url="https://telegra.ph/Politika-konfidencialnosti-09-08-51",
     )
     builder.button(text="⬅️ Назад", callback_data="profile")

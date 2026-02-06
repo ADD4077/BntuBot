@@ -277,8 +277,12 @@ def parse_schedule() -> None:
             tables = soup.find_all("table", class_="sheduleTable")
             schedule_data = {}
             schedule_data["Schedule"] = []
-            for week in range(2):
-                table = tables[week]
+            for week, table in enumerate(tables):
+                try:
+                    print(table, week)
+                    table = tables[week]
+                except:
+                    continue
                 schedule_data["Schedule"].append({})
                 if table:
                     if table.find("tbody"):
@@ -536,4 +540,3 @@ async def send_message(
                 if "message to be replied not found" in e.__repr__():
                     return await bot.send_message(chat_id, text)
         return await bot.send_message(chat_id, text)
-

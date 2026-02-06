@@ -184,7 +184,7 @@ async def start(message: types.Message):
                 await db.commit()
     await message.answer_photo(
         photo=main_menu_image,
-        caption=f"Рады вас видеть, @{message.from_user.username}!\n\nЭто бот, созданный инженерно-педагогическим факультетом, группой прикладного программирования, в котором Вы сможете найти полезную информацию.\n\nБот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\nПочему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
+        caption=f"🤍 Рады вас видеть, @{message.from_user.username}!\n\n📂 Это бот, созданный специально для студентов БНТУ, в нём Вы сможете найти полезную информацию, посмотреть расписание на любой день недели, а также литературу, нужную для освоения определенных предметов.\n\n❔ Почему стоит использовать:\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
         reply_markup=keyboards.main_menu_buttons(),
     )
 
@@ -197,7 +197,7 @@ async def main_menu(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.answer_photo(
         photo=main_menu_image,
-        caption=f"Рады вас видеть, @{callback.from_user.username}!\n\nЭто бот, созданный инженерно-педагогическим факультетом, группой прикладного программирования, в котором Вы сможете найти полезную информацию.\n\nБот поможет Вам быстро и просто посмотреть расписание вашего факультета на ближайшие пару дней или полностью, требования для автомата по разным предметам, а также литературу, нужную для освоения определенных предметов.\n\nПочему стоит пользоваться ботом?\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
+        caption=f"🤍 Рады вас видеть, @{callback.from_user.username}!\n\n📂 Это бот, созданный специально для студентов БНТУ, в нём Вы сможете найти полезную информацию, посмотреть расписание на любой день недели, а также литературу, нужную для освоения определенных предметов.\n\n❔ Почему стоит использовать:\n• Быстро и не нужно ждать\n• Надёжно и безопасно\n• Удобно и просто\n• Проверено другими",
         reply_markup=keyboards.main_menu_buttons(),
     )
 
@@ -233,12 +233,11 @@ async def profile(callback: types.CallbackQuery):
             )[0]
     await callback.message.answer_photo(
         photo=profile_image,
-        caption=f"Имя: {name}\n"
-        f"Фамилия: {family}\n\n"
-        f"Факультет: {faculty}\n"
-        f"Группа: {student_code[:-2]}\n"
-        f"Курс: {int(student_code[6:-2]) - (datetime.datetime.now().year - 2001)}\n\n"
-        f"Номер студ.: {student_code}\n",
+        caption=f"👤 {family} {name}\n"
+                f"Номер студ.: {student_code}\n\n"
+                f"🎓 Факультет: {faculty}\n"
+                f"👥 Группа: {student_code[:-2]}\n"
+                f"📖 Курс: {int(student_code[6:-2]) - (datetime.datetime.now().year - 2002)}\n",
         reply_markup=keyboards.profile_buttons(),
     )
 
@@ -254,9 +253,9 @@ async def scheduled_message(callback: types.CallbackQuery):
         if not job:
             raise JobLookupError(str(user_id))
         set_hour = job.trigger.fields[5]
-        caption = f"\nВы включили рассылку на {str(set_hour)}:00"
+        caption = f"\n✅ Вы включили рассылку на {str(set_hour)}:00"
     except JobLookupError:
-        caption = "После включения рассылки вам будет приходить расписание в выбранное вами время."
+        caption = "📩 После включения рассылки вам будет приходить расписание в выбранное вами время."
     await callback.message.answer_photo(
         caption=caption,
         photo=mailing_photo,
@@ -295,7 +294,7 @@ async def select_time(callback: types.CallbackQuery):
                     )
                 ).fetchone()
             )[0]
-    caption = f"\nВы включили рассылку на {hour}:00"
+    caption = f"\n✅ Вы включили рассылку на {hour}:00"
     try:
         job = scheduler.get_job(str(user_id))
         if not job:
@@ -305,7 +304,7 @@ async def select_time(callback: types.CallbackQuery):
             return await callback.answer("У вас уже включена рассылка на это время")
         job.remove()
         if hour == -1:
-            caption = "После включения рассылки вам будет приходить расписание в выбранное вами время."
+            caption = "📩  После включения рассылки вам будет приходить расписание в выбранное вами время."
             await callback.message.edit_caption(
                 caption=caption, reply_markup=keyboards.select_time()
             )
@@ -378,10 +377,10 @@ async def referal_system(callback: types.CallbackQuery):
                 date = "Нет"
     await callback.message.answer_photo(
         photo=profile_image,
-        caption=f"Приглашено: {count}\n\n"
-        f"Вас пригласил: {refer}\n"
-        f"Дата приглашения: {date}\n\n"
-        f"Ваша ссылка:\n"
+        caption=f"➕ Приглашено: {count}\n\n"
+        f"🫂 Вас пригласил: {refer}\n"
+        f"⌛️ Дата приглашения: {date}\n\n"
+        f"🔗 Ваша ссылка:\n"
         f"https://t.me/{(await bot.get_me()).id}?start={user_id}",
         reply_markup=keyboards.back_to_profile(),
     )
@@ -635,7 +634,6 @@ async def admin_panel(message, state=None):
         reply_markup=keyboards.admin_panel_menu(),
     )
 
-
 @dp.message(Command("admin"))
 @flags.owner(is_owner=True)
 @flags.permissions(any_permission=True)
@@ -650,6 +648,18 @@ async def admin_panel_by_callback(message: types.Message, state: FSMContext):
 @flags.authorization(is_authorized=True)
 async def admin_panel_by_callback(callback: types.CallbackQuery, state: FSMContext):
     await admin_panel(callback, state)
+
+
+@dp.callback_query(F.data.split()[0] == "admin_search")
+@flags.owner(is_owner=True)
+@flags.studcouncil_member(is_member=True)
+@flags.permissions(any_permission=True)
+@flags.authorization(is_authorized=True)
+async def admin_search(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.edit_text(
+        "Выберите способ поиска:",
+        reply_markup=keyboards.admin_panel_menu_search(),
+    )
 
 
 @dp.message(Command("add_event"))
@@ -759,10 +769,11 @@ async def input_event_image(message: types.Message, state: FSMContext):
 
 @dp.callback_query(F.data == "message_support")
 async def message_support(callback: types.CallbackQuery, state: FSMContext):
-    await state.set_state(states.SupportStates.message)
     await callback.message.answer(
-        "Напишите сообщение в поддержку.", reply_markup=keyboards.back_to_main()
+        "➡️ Отправьте сообщение, которое рассмотрит разработчик или модера.", reply_markup=keyboards.back_to_main()
     )
+    await callback.answer()
+    await state.set_state(states.SupportStates.message)
 
 
 @dp.message(states.SupportStates.message)
@@ -779,7 +790,8 @@ async def on_support_message(message: Message, state: FSMContext):
 
 @dp.callback_query(F.data.startswith("answer_support"))
 async def answer_support(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.answer("Напишите ваш ответ.")
+    await callback.message.answer("Напишите Ваш ответ.")
+    await callback.answer()
     await state.set_state(states.SupportStates.answer)
     await state.set_data({"user_id": callback.data.split(" ")[1]})
 
@@ -1002,7 +1014,7 @@ async def search_group(message: types.Message, state: FSMContext):
     )
     text += "\n".join(
         [
-            f"{i + 1}. {info[2]} (Telegram ID: {info[0]}; Номер студ. билета: {info[1]})"
+            f"{i + 1}. {info[2]} (ID: {info[0]})"
             for i, info in enumerate(response)
         ]
     )
@@ -1870,7 +1882,7 @@ async def schedule_week(callback: types.CallbackQuery):
         week = [1, 0][week]
     day = callback.data.split()[1]
     await callback.message.edit_caption(
-        caption=func.get_schedule(group, week, day),
+        caption=f"🗞 {day}:\n{func.get_schedule(group, week, day)}",
         reply_markup=keyboards.schedule_menu_other(callback.data.split()[2]),
         parse_mode="HTML",
     )
@@ -1889,7 +1901,7 @@ async def help(callback: types.CallbackQuery):
         return
     await callback.message.answer_photo(
         photo=support_image,
-        caption=f"Если у Вас есть предложения, идеи или Вы нашли баг, то можете соообщить об этом, мы постараемся как можно быстрее ответить на Ваше сообщение.\n\nОбращаться по юзернейму {user_owner}",
+        caption=f"📌 Если у Вас есть предложения, идеи или Вы нашли баг, то можете соообщить об этом, мы постараемся как можно быстрее ответить на Ваше сообщение.\n\n✏️ Обращаться по юзернейму {user_owner}",
         reply_markup=keyboards.help_menu(),
     )
 
