@@ -7,6 +7,7 @@ from bs4 import builder
 def main_menu_buttons():
     builder = InlineKeyboardBuilder()
     # builder.button(text="🎓 Студсовет", callback_data="studsovet")
+    
     builder.button(text="📅 Расписание", callback_data="schedule")
     builder.button(text="📜 Литература", switch_inline_query_current_chat="")
     builder.button(text="🗺 Карта", callback_data="map")
