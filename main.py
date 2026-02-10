@@ -571,9 +571,7 @@ async def search_anonymous_chat(callback: types.CallbackQuery, state: FSMContext
                         await cursor.execute(
                             "DELETE FROM chats WHERE user1_id = (?)", (user1_id,)
                         )
-                        return await callback.message.edit_text(
-                            "🔎 Идет поиск собеседника."
-                        )
+                        await callback.message.edit_text("🔎 Идет поиск собеседника.")
                 else:
                     await callback.message.edit_text("👥 Собеседник найден.")
             else:
