@@ -51,7 +51,7 @@ def get_week_and_day(
     if tomorrow:
         delta_days += 1
     day_of_week_index = delta_days % 7
-    week_number = 1 - (delta_days // 7) % 2
+    week_number = (delta_days // 7) % 2
     days = [
         "Понедельник",
         "Вторник",
