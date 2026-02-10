@@ -234,10 +234,10 @@ async def profile(callback: types.CallbackQuery):
     await callback.message.answer_photo(
         photo=profile_image,
         caption=f"👤 {family} {name}\n"
-                f"Номер студ.: {student_code}\n\n"
-                f"🎓 Факультет: {faculty}\n"
-                f"👥 Группа: {student_code[:-2]}\n"
-                f"📖 Курс: {int(student_code[6:-2]) - (datetime.datetime.now().year - 2002)}\n",
+        f"Номер студ.: {student_code}\n\n"
+        f"🎓 Факультет: {faculty}\n"
+        f"👥 Группа: {student_code[:-2]}\n"
+        f"📖 Курс: {int(student_code[6:-2]) - (datetime.datetime.now().year - 2002)}\n",
         reply_markup=keyboards.profile_buttons(),
     )
 
@@ -559,8 +559,23 @@ async def search_anonymous_chat(callback: types.CallbackQuery, state: FSMContext
                     "UPDATE chats SET user2_id=(?) WHERE user1_id=(?)",
                     (user2_id, user1_id),
                 )
-                await callback.message.edit_text("👥 Собеседник найден.")
-                await bot.send_message(user1_id, "👥 Собеседник найден.")
+
+                try:
+                    await bot.send_message(user1_id, "👥 Собеседник найден.")
+                except TelegramForbiddenError as e:
+                    if "bot was blocked by the user" in str(e):
+                        await cursor.execute(
+                            "INSERT INTO chats (user1_id, user2_id) VALUES (?, ?)",
+                            (user2_id, None),
+                        )
+                        await cursor.execute(
+                            "DELETE FROM chats WHERE user1_id = (?)", (user1_id,)
+                        )
+                        return await callback.message.edit_text(
+                            "🔎 Идет поиск собеседника."
+                        )
+                else:
+                    await callback.message.edit_text("👥 Собеседник найден.")
             else:
                 await cursor.execute(
                     "INSERT INTO chats (user1_id, user2_id) VALUES (?, ?)",
@@ -633,6 +648,7 @@ async def admin_panel(message, state=None):
         f"Пользователей: {count}\nФакультетов: {len(set(faculties))}",
         reply_markup=keyboards.admin_panel_menu(),
     )
+
 
 @dp.message(Command("admin"))
 @flags.owner(is_owner=True)
@@ -770,7 +786,8 @@ async def input_event_image(message: types.Message, state: FSMContext):
 @dp.callback_query(F.data == "message_support")
 async def message_support(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(
-        "➡️ Отправьте сообщение, которое рассмотрит разработчик или модера.", reply_markup=keyboards.back_to_main()
+        "➡️ Отправьте сообщение, которое рассмотрит разработчик или модера.",
+        reply_markup=keyboards.back_to_main(),
     )
     await callback.answer()
     await state.set_state(states.SupportStates.message)
@@ -1013,10 +1030,7 @@ async def search_group(message: types.Message, state: FSMContext):
         "Пользователи:\n"
     )
     text += "\n".join(
-        [
-            f"{i + 1}. {info[2]} (ID: {info[0]})"
-            for i, info in enumerate(response)
-        ]
+        [f"{i + 1}. {info[2]} (ID: {info[0]})" for i, info in enumerate(response)]
     )
     await message.answer(
         text, reply_markup=keyboards.control_group_buttons(group_number)
