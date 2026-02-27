@@ -237,7 +237,7 @@ async def profile(callback: types.CallbackQuery):
                 f"Номер студ.: {student_code}\n\n"
                 f"🎓 Факультет: {faculty}\n"
                 f"👥 Группа: {student_code[:-2]}\n"
-                f"📖 Курс: {int(student_code[6:-2]) - (datetime.datetime.now().year - 2002)}\n",
+                f"📖 Курс: {(datetime.datetime.now().year - 2000) - int(student_code[6:-2])}\n",
         reply_markup=keyboards.profile_buttons(),
     )
 
