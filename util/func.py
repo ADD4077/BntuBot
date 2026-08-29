@@ -66,6 +66,8 @@ def get_week_and_day(
 
 
 def get_schedule(group: int, week: int, day: str) -> str:
+    if day.lower == 'воскресенье':
+        return "Занятий нет 🎉"
     group = str(group)
     faculty = group[0:3]
     course = 1 if group[-2:] == 26 else 2
@@ -84,6 +86,8 @@ def get_schedule(group: int, week: int, day: str) -> str:
                 case '15.40-16.25 16.30-17.15': formatted_time = '15.40-17.15'
             if matter:
                 text += f"⏰ <b>{formatted_time}</b> :\n<blockquote>{matter}</blockquote>\n\n"
+    if text:
+        text += f'Сейчас {'вторая' if week == 1 else 'первая'} неделя.'
     return text or "Занятий нет 🎉"
     #with open(
     #    base_dir / "schedules" / f"schedule_{group}.json", "r", encoding="utf8"
