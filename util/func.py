@@ -66,19 +66,37 @@ def get_week_and_day(
 
 
 def get_schedule(group: int, week: int, day: str) -> str:
-    group = group[0:8]
+    group = str(group)
+    faculty = group[0:3]
+    course = 1 if group[-2:] == 26 else 2
     with open(
-        base_dir / "schedules" / f"schedule_{group}.json", "r", encoding="utf8"
+        base_dir / "schedules2026" / f"schedules_{course}_course_{faculty}.json", "r"
     ) as jsonfile:
-        schedule_base = json.load(jsonfile)["Schedule"]
-    text = ""
-    try:
-        for i in schedule_base[week][day]:
-            teacher_text = ("\n" + i["Teacher"]) if i["Teacher"] else ""
-            text += f"<blockquote>{i['Time']} | {i['Matter']}\n{i['Frame']} корп., {i['Classroom']} аудит.{teacher_text}</blockquote>\n"
-    except KeyError:
-        text += "Занятий нет 🎉"
-    return text
+        schedule = json.load(jsonfile)[group[0:8]][day.lower()]
+        text = ''
+        for time, matter in schedule.items():
+            formatted_time = ''
+            match time:
+                case '8.00 - 8.45  8.50 - 9.35': formatted_time = '8.00-9.35'
+                case '9.55-10.40 10.45-11.30': formatted_time = '9.55-11.30'
+                case '11.40-12.25 12.30-13.15': formatted_time = '11.40-13.15'
+                case '13.55-14.40 14.45-15.30': formatted_time = '13.55-15.30'
+                case '15.40-16.25 16.30-17.15': formatted_time = '15.40-17.15'
+            if matter:
+                text += f"⏰ <b>{formatted_time}</b> :\n<blockquote>{matter}</blockquote>\n\n"
+    return text or "Занятий нет 🎉"
+    #with open(
+    #    base_dir / "schedules" / f"schedule_{group}.json", "r", encoding="utf8"
+    #) as jsonfile:
+    #    schedule_base = json.load(jsonfile)["Schedule"]
+    #text = ""
+    #try:
+    #    for i in schedule_base[week][day]:
+    #        teacher_text = ("\n" + i["Teacher"]) if i["Teacher"] else ""
+    #        text += f"<blockquote>{i['Time']} | {i['Matter']}\n{i['Frame']} корп., {i['Classroom']} аудит.{teacher_text}</blockquote>\n"
+    #except KeyError:
+    #    text += "Занятий нет 🎉"
+    #return text
 
 
 async def auth_send(bot, message):
