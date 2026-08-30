@@ -66,7 +66,7 @@ def get_week_and_day(
 
 
 def get_schedule(group: int, week: int, day: str) -> str:
-    if day.lower == 'воскресенье':
+    if day.lower() == 'воскресенье':
         return "Занятий нет 🎉"
     group = str(group)
     faculty = group[0:3]
@@ -74,7 +74,7 @@ def get_schedule(group: int, week: int, day: str) -> str:
     with open(
         base_dir / "schedules2026" / f"schedules_{course}_course_{faculty}.json", "r"
     ) as jsonfile:
-        schedule = json.load(jsonfile)[group[0:8]][day.lower()]
+        schedule = json.load(jsonfile)[group[0:8]][week][day.lower()]
         text = ''
         for time, matter in schedule.items():
             formatted_time = ''
@@ -87,7 +87,7 @@ def get_schedule(group: int, week: int, day: str) -> str:
             if matter:
                 text += f"⏰ <b>{formatted_time}</b> :\n<blockquote>{matter}</blockquote>\n\n"
     if text:
-        text += f'Сейчас {'вторая' if week == 1 else 'первая'} неделя.'
+        text += f'Расписание {'второй' if week == 1 else 'первой'} недели.'
     return text or "Занятий нет 🎉"
     #with open(
     #    base_dir / "schedules" / f"schedule_{group}.json", "r", encoding="utf8"
